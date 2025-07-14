@@ -23,4 +23,4 @@ ffmpeg \
 # TODO: possibly use sharp node package for this instead so that
 #       all the logic can be in a single file. Sharp also happens
 #       to be around 4-5x faster.
-magick mogrify -resize 90x90 -fuzz 55% -transparent white "${OUT_DIR}/*.png"
+magick mogrify -resize 80x60\! -fuzz 40% -transparent white "${OUT_DIR}/*.png"
