@@ -20,10 +20,11 @@ fi
 mkdir "${OUT_DIR}"
 
 # create a png file for each frame in the video
-# TODO: see if sharp can do frame splitting.
-ffmpeg \
-    -i "${VIDEO_FILE}" \
-    "${OUT_DIR}/frame_%04d.png" &>/dev/null
+# TODO: use node child_process.exec to run this command so
+#       we can avoid using a shell script entirely. It will
+#       also allow for better error handling and readability
+#       in comparison to bash scripts.
+ffmpeg -i "${VIDEO_FILE}" "${OUT_DIR}/frame_%04d.png" &>/dev/null
 
 node ../dist/main.js "${OUT_DIR}"
 trash "${OUT_DIR}"
