@@ -25,15 +25,12 @@ for (let row = 0; row < testImg.info.height; row++) {
         if (a === 0) {
             asciiImageStr += " ";
         } else {
-            // calculate the brightness of a pixel
-            let avgBrightness = (r + b + g) / 3;
+            // calculate the luminance of a given pixel
+            // more info: https://en.wikipedia.org/wiki/Relative_luminance
+            let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
             // map the brightness to a character density index
-            let charIndex = mapValue(
-                avgBrightness,
-                0,
-                255,
-                0,
-                DENSITY.length - 1,
+            let charIndex = Math.round(
+                mapValue(luminance, 0, 255, 0, DENSITY.length - 1),
             );
             // add a character (pixel) to the row
             asciiImageStr += DENSITY.charAt(charIndex);
