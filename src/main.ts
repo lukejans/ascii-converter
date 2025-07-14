@@ -3,12 +3,6 @@ import path from "node:path";
 import sharp from "sharp";
 import { mapValue } from "./utils.ts";
 
-// exit early if no path was passed
-if (!process.argv[2]) {
-    console.error("No path provided");
-    process.exit(1);
-}
-
 type SharpImg = {
     data: Buffer;
     info: sharp.OutputInfo;
@@ -30,6 +24,11 @@ let asciiFrames: string[][] = [];
 for (let i = 0; i < frameFiles.length; i++) {
     // extract raw, unsigned 8-bit RGB pixel data from png
     const data = await sharp(path.resolve(FRAMES_DIR, frameFiles[i]))
+        .resize({
+            width: 80,
+            height: 60,
+            fit: "fill",
+        })
         .raw()
         .toBuffer({ resolveWithObject: true });
 
