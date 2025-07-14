@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import { mapValue } from "./utils.ts";
 
-const DENSITY = "@#$%&*+=~-;:,.`";
+const DENSITY = "@#%$=*xo~.";
 
 // extract raw, unsigned 8-bit RGBA pixel data from png
 const testImg = await sharp("public/test.png")
@@ -36,6 +36,7 @@ for (let row = 0; row < testImg.info.height; row++) {
             asciiImageStr += DENSITY.charAt(charIndex);
         }
     }
+    asciiImageStr += "\n";
 }
 
 // // frame file naming convention "frame_0001.txt" where
