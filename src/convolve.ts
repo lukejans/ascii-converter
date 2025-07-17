@@ -112,13 +112,13 @@ function isHorizontal(angle: number): boolean {
 }
 
 function isVertical(angle: number): boolean {
-    return angle >= 80 && angle <= 99;
+    return angle >= 71 && angle <= 109;
 }
 
 function isRightDiagonal(angle: number): boolean {
-    return angle >= 20 && angle <= 79;
+    return angle >= 20 && angle <= 70;
 }
 
 function isLeftDiagonal(angle: number): boolean {
-    return angle >= 100 && angle <= 160;
+    return angle >= 110 && angle <= 160;
 }
