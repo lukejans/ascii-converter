@@ -4,12 +4,11 @@ import sharp from "sharp";
 /**
  * Configuration for ASCII art conversion
  */
-interface ConversionConfig {
+interface ConvertConfig {
     imagePath: string;
     width: number;
     height: number;
     threshold: number;
-    faintThreshold: number;
 }
 
 /**
@@ -68,9 +67,7 @@ function isLeftDiagonal(angle: number): boolean {
  * @param config
  * @returns
  */
-async function convertImageToAscii(
-    config: ConversionConfig,
-): Promise<string[]> {
+async function convertImageToASCII(config: ConvertConfig): Promise<string[]> {
     // load and process image
     const buffer = await fs.readFile(config.imagePath);
 
@@ -129,7 +126,6 @@ async function convertImageToAscii(
     // where the ASCII image will be stored
     const asciiImg: string[] = Array(config.height).fill("");
     const threshold = data.magnitude.max * config.threshold;
-    const faintThreshold = threshold * config.faintThreshold;
 
     // build the ASCII image
     for (let i = 0; i < config.height; i++) {
@@ -146,6 +142,8 @@ async function convertImageToAscii(
                 true, // in little-endian byte order
             );
 
+            // before making any calculations, make sure we want to render
+            // that pixel as an edge.
             if (curMagnitude > threshold) {
                 // get the angle of the gradient in the range [-π, π]
                 const gradientAngle = Math.atan2(
@@ -154,7 +152,7 @@ async function convertImageToAscii(
                     data.Gx.getInt16(index * 2, true),
                 );
 
-                // add half a radian to get the angle perpendicular to the gradient
+                // get the angle perpendicular to the gradient
                 const edgeAngle = gradientAngle + Math.PI / 2;
 
                 // normalize the angle to the range [0, π]
@@ -165,17 +163,15 @@ async function convertImageToAscii(
                 const angleDeg = Math.round((normalizedAngle * 180) / Math.PI);
 
                 // determine what character to use based on the angle
+                // NOTE: there is currently no way to find a way to detect when corners
+                // are present. This might have to be done as a postprocess to check a
+                // chars neighbors for blank spaces to detect a corner. This will greatly
+                // improve the final border output as "/-" doesn't make a nice corner.
                 if (isHorizontal(angleDeg)) asciiImg[i] += "-";
                 else if (isRightDiagonal(angleDeg)) asciiImg[i] += "\\";
                 else if (isVertical(angleDeg)) asciiImg[i] += "|";
                 else if (isLeftDiagonal(angleDeg)) asciiImg[i] += "/";
                 else asciiImg[i] += " ";
-            } else if (curMagnitude > faintThreshold) {
-                // NOTE: this is more here so no gaps in the image are created if the
-                // thereshold is too high to render corners. Try to find a way to detect
-                // when a corner is present. This might have to be done as a postprocess
-                // to check a character's neighbors for blank spaces to detect a corner.
-                asciiImg[i] += " ";
             } else {
                 asciiImg[i] += " ";
             }
@@ -185,16 +181,15 @@ async function convertImageToAscii(
 }
 
 // image configuration
-const config: ConversionConfig = {
+const config: ConvertConfig = {
     imagePath: "testing/joystick.png", // <- change
     width: 120,
     height: 60,
     threshold: 0.6,
-    faintThreshold: 0.9,
 };
 
 // DEBUG: display
-const asciiArt = await convertImageToAscii(config);
+const asciiArt = await convertImageToASCII(config);
 for (let i = 0; i < asciiArt.length; i++) {
     console.log(asciiArt[i]);
 }
