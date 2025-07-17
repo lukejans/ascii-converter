@@ -54,8 +54,10 @@ const gy = await sharp(img.buffer)
 const gxData = new DataView(gx.data.buffer);
 const gyData = new DataView(gy.data.buffer);
 
-const THRESHOLD = 950;
 let asciiImg = "";
+
+const magnitudes = new DataView(new ArrayBuffer(img.w * img.h * 4));
+let maxMagnitude = -Infinity;
 
 for (let i = 0; i < img.h; i++) {
     for (let j = 0; j < img.w; j++) {
@@ -66,7 +68,16 @@ for (let i = 0; i < img.h; i++) {
             gxData.getInt16((i * img.w + j) * 2, true) ** 2 +
                 gyData.getInt16((i * img.w + j) * 2, true) ** 2,
         );
-        if (magnitude > THRESHOLD) {
+        maxMagnitude = Math.max(maxMagnitude, magnitude);
+        magnitudes.setFloat32((i * img.w + j) * 4, magnitude, true);
+    }
+}
+const THRESHOLD = maxMagnitude * 0.7;
+
+for (let i = 0; i < img.h; i++) {
+    for (let j = 0; j < img.w; j++) {
+        const curMagnitude = magnitudes.getFloat32((i * img.w + j) * 4, true);
+        if (curMagnitude > THRESHOLD) {
             /**
              * get the angle of the gradient in the range [-π, π].
              * @link https://en.wikipedia.org/wiki/Atan2
@@ -97,7 +108,7 @@ for (let i = 0; i < img.h; i++) {
             } else if (isLeftDiagonal(angleDeg)) {
                 asciiImg += "/";
             }
-        } else if (magnitude < THRESHOLD && magnitude > THRESHOLD * 0.9) {
+        } else if (curMagnitude < THRESHOLD && curMagnitude > THRESHOLD * 0.9) {
             asciiImg += ".";
         } else {
             asciiImg += " ";
