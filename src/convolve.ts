@@ -1,6 +1,20 @@
 import fs from "node:fs/promises";
 import sharp from "sharp";
+
 /**
+ * Configuration for ASCII art conversion
+ */
+interface ConversionConfig {
+    imagePath: string;
+    width: number;
+    height: number;
+    threshold: number;
+    faintThreshold: number;
+}
+
+/**
+ * Sobel operator kernels for edge detection
+ *
  * To detect edges in an image you can use kernels to convolve over
  * an image's pixels. The kernel is a matrix of weights that is applied
  * to each pixel in an image and outputs new pixels each of which is a
@@ -22,114 +36,165 @@ import sharp from "sharp";
  * where * denotes the 2D signal processing convolution operation.
  * ```
  *
- *
- *
  * @link https://en.wikipedia.org/wiki/Kernel_(image_processing)
  * @link https://en.wikipedia.org/wiki/Convolution
  * @link https://en.wikipedia.org/wiki/Sobel_operator
  * @link https://en.wikipedia.org/wiki/Relative_luminance
  */
-const img = {
-    buffer: await fs.readFile("testing/circle.png"),
-    w: 80,
-    h: 40,
-    xKernel: [-1, 0, 1, -2, 0, 2, -1, 0, 1],
-    yKernel: [-1, -2, -1, 0, 0, 0, 1, 2, 1],
+const SOBEL_KERNELS = {
+    x: [-1, 0, 1, -2, 0, 2, -1, 0, 1],
+    y: [-1, -2, -1, 0, 0, 0, 1, 2, 1],
 };
 
-const gx = await sharp(img.buffer)
-    .resize({ width: img.w, height: img.h, fit: "fill" })
-    .greyscale()
-    .convolve({ width: 3, height: 3, kernel: img.xKernel })
-    .raw({ depth: "short" })
-    .toBuffer({ resolveWithObject: true });
-
-const gy = await sharp(img.buffer)
-    .resize({ width: img.w, height: img.h, fit: "fill" })
-    .greyscale()
-    .convolve({ width: 3, height: 3, kernel: img.yKernel })
-    .raw({ depth: "short" })
-    .toBuffer({ resolveWithObject: true });
-
-const gxData = new DataView(gx.data.buffer);
-const gyData = new DataView(gy.data.buffer);
-
-let asciiImg = "";
-
-const magnitudes = new DataView(new ArrayBuffer(img.w * img.h * 4));
-let maxMagnitude = -Infinity;
-
-for (let i = 0; i < img.h; i++) {
-    for (let j = 0; j < img.w; j++) {
-        /**
-         * magnitude = √(horizontalGradient² + verticalGradient²)
-         */
-        const magnitude = Math.sqrt(
-            gxData.getInt16((i * img.w + j) * 2, true) ** 2 +
-                gyData.getInt16((i * img.w + j) * 2, true) ** 2,
-        );
-        maxMagnitude = Math.max(maxMagnitude, magnitude);
-        magnitudes.setFloat32((i * img.w + j) * 4, magnitude, true);
-    }
-}
-const THRESHOLD = maxMagnitude * 0.7;
-
-for (let i = 0; i < img.h; i++) {
-    for (let j = 0; j < img.w; j++) {
-        const curMagnitude = magnitudes.getFloat32((i * img.w + j) * 4, true);
-        if (curMagnitude > THRESHOLD) {
-            /**
-             * get the angle of the gradient in the range [-π, π].
-             * @link https://en.wikipedia.org/wiki/Atan2
-             */
-            const gradientAngle = Math.atan2(
-                gyData.getInt16((i * img.w + j) * 2, true),
-                gxData.getInt16((i * img.w + j) * 2, true),
-            );
-
-            // add half a radian to get the perpendicular angle to the
-            // gradient which will be the angle of the edge.
-            const edgeAngle = gradientAngle + Math.PI / 2;
-
-            // we don't actually care about the direction because the
-            // character would be the same for -π/2 and π/2 so we can
-            // normalize the angle to the range [0, π]
-            let normalizedAngle = edgeAngle % Math.PI;
-            if (normalizedAngle < 0) normalizedAngle += Math.PI;
-
-            // Convert to degrees for easier understanding
-            const angleDeg = Math.round((normalizedAngle * 180) / Math.PI);
-            if (isHorizontal(angleDeg)) {
-                asciiImg += "-";
-            } else if (isRightDiagonal(angleDeg)) {
-                asciiImg += "\\";
-            } else if (isVertical(angleDeg)) {
-                asciiImg += "|";
-            } else if (isLeftDiagonal(angleDeg)) {
-                asciiImg += "/";
-            }
-        } else if (curMagnitude < THRESHOLD && curMagnitude > THRESHOLD * 0.9) {
-            asciiImg += ".";
-        } else {
-            asciiImg += " ";
-        }
-    }
-    asciiImg += "\n";
-}
-console.log(asciiImg);
-
+// angle detection helper functions
 function isHorizontal(angle: number): boolean {
     return (angle >= 0 && angle <= 19) || (angle <= 180 && angle >= 161);
 }
-
 function isVertical(angle: number): boolean {
     return angle >= 71 && angle <= 109;
 }
-
 function isRightDiagonal(angle: number): boolean {
     return angle >= 20 && angle <= 70;
 }
-
 function isLeftDiagonal(angle: number): boolean {
     return angle >= 110 && angle <= 160;
+}
+
+/**
+ * Convert an image to ASCII / text. This will apply the Sobel operators
+ * to an image then calculate the angle of the gradient to determine what
+ * edge character to use.
+ *
+ * @param config
+ * @returns
+ */
+async function convertImageToAscii(
+    config: ConversionConfig,
+): Promise<string[]> {
+    // load and process image
+    const buffer = await fs.readFile(config.imagePath);
+
+    // apply sobel operators to detect changes in gradient
+    const sobelResGx = await sharp(buffer)
+        .resize({ width: config.width, height: config.height, fit: "fill" })
+        .greyscale()
+        .convolve({ width: 3, height: 3, kernel: SOBEL_KERNELS.x })
+        .raw({ depth: "short" })
+        .toBuffer({ resolveWithObject: true });
+    const sobelResGy = await sharp(buffer)
+        .resize({ width: config.width, height: config.height, fit: "fill" })
+        .greyscale()
+        .convolve({ width: 3, height: 3, kernel: SOBEL_KERNELS.y })
+        .raw({ depth: "short" })
+        .toBuffer({ resolveWithObject: true });
+
+    const data = {
+        // put the buffers in a DataView for easy processing
+        Gx: new DataView(sobelResGx.data.buffer),
+        Gy: new DataView(sobelResGy.data.buffer),
+        /**
+         * magnitudes are used alongside the threshold config option
+         * to determine what pixels should be included in the output.
+         */
+        magnitude: {
+            all: new DataView(
+                new ArrayBuffer(config.width * config.height * 4),
+            ),
+            max: -Infinity,
+        },
+    };
+
+    // calculate the magnitudes and find the max magnitude
+    for (let i = 0; i < config.height; i++) {
+        for (let j = 0; j < config.width; j++) {
+            const index = (i * config.width + j) * 2;
+
+            // magnitude = √(Gx² + Gy²)
+            const curMagnitude = Math.sqrt(
+                data.Gx.getInt16(index, true) ** 2 +
+                    data.Gy.getInt16(index, true) ** 2,
+            );
+
+            // find the max magnitude
+            data.magnitude.max = Math.max(data.magnitude.max, curMagnitude);
+            // add the calculated magnitude to the array buffer
+            data.magnitude.all.setFloat32(
+                (i * config.width + j) * 4,
+                curMagnitude,
+                true,
+            );
+        }
+    }
+
+    // where the ASCII image will be stored
+    const asciiImg: string[] = Array(config.height).fill("");
+    const threshold = data.magnitude.max * config.threshold;
+    const faintThreshold = threshold * config.faintThreshold;
+
+    // build the ASCII image
+    for (let i = 0; i < config.height; i++) {
+        for (let j = 0; j < config.width; j++) {
+            /**
+             * this is the current index if each pixel were a single byte.
+             * The real index is calculate based on how many bytes are read
+             * from a given data buffer to construct the data.
+             */
+            const index = i * config.width + j;
+
+            const curMagnitude = data.magnitude.all.getFloat32(
+                index * 4, // read 4 bytes at a time
+                true, // in little-endian byte order
+            );
+
+            if (curMagnitude > threshold) {
+                // get the angle of the gradient in the range [-π, π]
+                const gradientAngle = Math.atan2(
+                    // read 2 bytes at a time in little-endian byte order
+                    data.Gy.getInt16(index * 2, true),
+                    data.Gx.getInt16(index * 2, true),
+                );
+
+                // add half a radian to get the angle perpendicular to the gradient
+                const edgeAngle = gradientAngle + Math.PI / 2;
+
+                // normalize the angle to the range [0, π]
+                let normalizedAngle = edgeAngle % Math.PI;
+                if (normalizedAngle < 0) normalizedAngle += Math.PI;
+
+                // convert to more human friendly degrees
+                const angleDeg = Math.round((normalizedAngle * 180) / Math.PI);
+
+                // determine what character to use based on the angle
+                if (isHorizontal(angleDeg)) asciiImg[i] += "-";
+                else if (isRightDiagonal(angleDeg)) asciiImg[i] += "\\";
+                else if (isVertical(angleDeg)) asciiImg[i] += "|";
+                else if (isLeftDiagonal(angleDeg)) asciiImg[i] += "/";
+                else asciiImg[i] += " ";
+            } else if (curMagnitude > faintThreshold) {
+                // NOTE: this is more here so no gaps in the image are created if the
+                // thereshold is too high to render corners. Try to find a way to detect
+                // when a corner is present. This might have to be done as a postprocess
+                // to check a character's neighbors for blank spaces to detect a corner.
+                asciiImg[i] += " ";
+            } else {
+                asciiImg[i] += " ";
+            }
+        }
+    }
+    return asciiImg;
+}
+
+// image configuration
+const config: ConversionConfig = {
+    imagePath: "testing/joystick.png", // <- change
+    width: 120,
+    height: 60,
+    threshold: 0.6,
+    faintThreshold: 0.9,
+};
+
+// DEBUG: display
+const asciiArt = await convertImageToAscii(config);
+for (let i = 0; i < asciiArt.length; i++) {
+    console.log(asciiArt[i]);
 }
