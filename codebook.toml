@@ -1,1 +1,4 @@
-words = ["sobel"]
+words = [
+    "gaussians",
+    "sobel",
+]
