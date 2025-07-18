@@ -20,7 +20,7 @@ const diffOfGaussians = await sharp(buffer)
     ])
     .toBuffer();
 
-let res = await sharp(diffOfGaussians)
+const res = await sharp(diffOfGaussians)
     .threshold(1)
     .removeAlpha()
     .toBuffer({ resolveWithObject: true });
