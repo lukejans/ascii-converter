@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import { convertImageToASCII } from "./convolve.ts";
 import { mapValue } from "./utils.ts";
 
 interface SharpImg {
@@ -9,32 +10,7 @@ interface SharpImg {
 }
 
 const DENSITY = "#$?0=*c~. ";
-const FRAMES_DIR = path.resolve(process.argv[2]);
-
-// load all the files
-const frameFiles = await fs
-    .readdir(FRAMES_DIR)
-    .then((res) => res.sort())
-    .catch((err) => {
-        throw new Error(err);
-    });
-
-// process each frame file
-const asciiFrames: string[][] = [];
-for (let i = 0; i < frameFiles.length; i++) {
-    // extract raw, unsigned 8-bit RGB pixel data from png
-    const data = await sharp(path.resolve(FRAMES_DIR, frameFiles[i]))
-        .resize({
-            width: 80,
-            height: 60,
-            fit: "fill",
-        })
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-
-    // create an array to store each frame
-    asciiFrames[i] = constructFrame(data);
-}
+const FRAMES_DIR = "public/frames";
 
 function constructFrame(sharpImg: SharpImg): string[] {
     // string to store the image in ascii format
@@ -68,5 +44,64 @@ function constructFrame(sharpImg: SharpImg): string[] {
     return asciiImage;
 }
 
-// // all files have been processed so write to an output file
+export interface ImageInfo {
+    buffer: Buffer;
+    w: number;
+    h: number;
+    threshold: number;
+}
+
+function stichASCII(imgBase: string[], imgAdd: string[]): string[] {
+    const res: string[] = Array(imgInfo.h).fill("");
+    // stitch the two images together
+    for (let i = 0; i < imgInfo.h; i++) {
+        for (let j = 0; j < imgInfo.w; j++) {
+            if (imgBase[i][j] === " ") {
+                res[i] += imgAdd[i][j];
+            } else {
+                res[i] += imgBase[i][j];
+            }
+        }
+    }
+    return res;
+}
+
+// load all the files
+const frameFiles = await fs
+    .readdir(FRAMES_DIR)
+    .then((res) => res.sort())
+    .catch((err) => {
+        throw new Error(err);
+    });
+
+// image configuration
+const imgInfo: ImageInfo = {
+    buffer: await fs.readFile(path.resolve(FRAMES_DIR, frameFiles[0])),
+    w: 160,
+    h: 80,
+    threshold: 0.8,
+};
+
+// process each frame file
+const asciiFrames: string[][] = [];
+for (let i = 0; i < frameFiles.length; i++) {
+    imgInfo.buffer = await fs.readFile(path.resolve(FRAMES_DIR, frameFiles[i]));
+    // extract raw, unsigned 8-bit RGB pixel data from png
+    const buffer = await sharp(imgInfo.buffer)
+        .resize({
+            width: imgInfo.w,
+            height: imgInfo.h,
+            fit: "fill",
+        })
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+    const imgBase = await convertImageToASCII(imgInfo);
+    const imgAdd = constructFrame(buffer);
+
+    // create an array to store each frame
+    asciiFrames[i] = stichASCII(imgBase, imgAdd);
+}
+
+// all files have been processed so write to an output file
 fs.writeFile("frames.json", JSON.stringify(asciiFrames));
