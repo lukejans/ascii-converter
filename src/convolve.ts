@@ -1,15 +1,5 @@
-import fs from "node:fs/promises";
 import sharp from "sharp";
-
-/**
- * Configuration for ASCII art conversion
- */
-interface ConvertConfig {
-    imagePath: string;
-    width: number;
-    height: number;
-    threshold: number;
-}
+import type { ImageInfo } from "./main.ts";
 
 /**
  * Sobel operator kernels for edge detection
@@ -64,22 +54,19 @@ function isLeftDiagonal(angle: number): boolean {
  * to an image then calculate the angle of the gradient to determine what
  * edge character to use.
  *
- * @param config
+ * @param imgInfo
  * @returns
  */
-async function convertImageToASCII(config: ConvertConfig): Promise<string[]> {
-    // load and process image
-    const buffer = await fs.readFile(config.imagePath);
-
+async function convertImageToASCII(imgInfo: ImageInfo): Promise<string[]> {
     // apply sobel operators to detect changes in gradient
-    const sobelResGx = await sharp(buffer)
-        .resize({ width: config.width, height: config.height, fit: "fill" })
+    const sobelResGx = await sharp(imgInfo.buffer)
+        .resize({ width: imgInfo.w, height: imgInfo.h, fit: "fill" })
         .greyscale()
         .convolve({ width: 3, height: 3, kernel: SOBEL_KERNELS.x })
         .raw({ depth: "short" })
         .toBuffer({ resolveWithObject: true });
-    const sobelResGy = await sharp(buffer)
-        .resize({ width: config.width, height: config.height, fit: "fill" })
+    const sobelResGy = await sharp(imgInfo.buffer)
+        .resize({ width: imgInfo.w, height: imgInfo.h, fit: "fill" })
         .greyscale()
         .convolve({ width: 3, height: 3, kernel: SOBEL_KERNELS.y })
         .raw({ depth: "short" })
@@ -90,52 +77,52 @@ async function convertImageToASCII(config: ConvertConfig): Promise<string[]> {
         Gx: new DataView(sobelResGx.data.buffer),
         Gy: new DataView(sobelResGy.data.buffer),
         /**
-         * magnitudes are used alongside the threshold config option
+         * magnitudes are used alongside the threshold imgInfo field
          * to determine what pixels should be included in the output.
          */
         magnitude: {
-            all: new DataView(
-                new ArrayBuffer(config.width * config.height * 4),
-            ),
+            all: new DataView(new ArrayBuffer(imgInfo.w * imgInfo.h * 4)),
             max: -Infinity,
         },
     };
 
     // calculate the magnitudes and find the max magnitude
-    for (let i = 0; i < config.height; i++) {
-        for (let j = 0; j < config.width; j++) {
-            const index = (i * config.width + j) * 2;
-
-            // magnitude = √(Gx² + Gy²)
-            const curMagnitude = Math.sqrt(
-                data.Gx.getInt16(index, true) ** 2 +
-                    data.Gy.getInt16(index, true) ** 2,
-            );
-
-            // find the max magnitude
-            data.magnitude.max = Math.max(data.magnitude.max, curMagnitude);
-            // add the calculated magnitude to the array buffer
-            data.magnitude.all.setFloat32(
-                (i * config.width + j) * 4,
-                curMagnitude,
-                true,
-            );
-        }
-    }
-
-    // where the ASCII image will be stored
-    const asciiImg: string[] = Array(config.height).fill("");
-    const threshold = data.magnitude.max * config.threshold;
-
-    // build the ASCII image
-    for (let i = 0; i < config.height; i++) {
-        for (let j = 0; j < config.width; j++) {
+    for (let i = 0; i < imgInfo.h; i++) {
+        for (let j = 0; j < imgInfo.w; j++) {
             /**
              * this is the current index if each pixel were a single byte.
              * The real index is calculate based on how many bytes are read
              * from a given data buffer to construct the data.
              */
-            const index = i * config.width + j;
+            const index = i * imgInfo.w + j;
+
+            // magnitude = √(Gx² + Gy²)
+            const curMagnitude = Math.sqrt(
+                // read 2 bytes at a time in little-endian byte order
+                data.Gx.getInt16(index * 2, true) ** 2 +
+                    data.Gy.getInt16(index * 2, true) ** 2,
+            );
+
+            // find the max magnitude
+            data.magnitude.max = Math.max(data.magnitude.max, curMagnitude);
+            // add the calculated magnitude to the array buffer (4 byte read)
+            data.magnitude.all.setFloat32(index * 4, curMagnitude, true);
+        }
+    }
+
+    // where the ASCII image will be stored
+    const asciiImg: string[] = Array(imgInfo.h).fill("");
+    const threshold = data.magnitude.max * imgInfo.threshold;
+
+    // build the ASCII image
+    for (let i = 0; i < imgInfo.h; i++) {
+        for (let j = 0; j < imgInfo.w; j++) {
+            /**
+             * this is the current index if each pixel were a single byte.
+             * The real index is calculate based on how many bytes are read
+             * from a given data buffer to construct the data.
+             */
+            const index = i * imgInfo.w + j;
 
             const curMagnitude = data.magnitude.all.getFloat32(
                 index * 4, // read 4 bytes at a time
@@ -180,16 +167,4 @@ async function convertImageToASCII(config: ConvertConfig): Promise<string[]> {
     return asciiImg;
 }
 
-// image configuration
-const config: ConvertConfig = {
-    imagePath: "testing/joystick.png", // <- change
-    width: 120,
-    height: 60,
-    threshold: 0.6,
-};
-
-// DEBUG: display
-const asciiArt = await convertImageToASCII(config);
-for (let i = 0; i < asciiArt.length; i++) {
-    console.log(asciiArt[i]);
-}
+export { convertImageToASCII };
