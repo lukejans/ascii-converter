@@ -1,5 +1,7 @@
 words = [
     "esm",
     "gaussians",
+    "greyscale",
+    "lcov",
     "sobel",
 ]
