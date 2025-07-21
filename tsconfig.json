@@ -11,6 +11,7 @@
         "rewriteRelativeImportExtensions": true,
         "resolveJsonModule": true,
         "verbatimModuleSyntax": true,
+        "isolatedModules": true,
 
         // emit
         "outDir": "dist",

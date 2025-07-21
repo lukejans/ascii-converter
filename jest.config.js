@@ -10,11 +10,12 @@ const config = {
     collectCoverage: true,
     collectCoverageFrom: [
         "src/**/*.{ts,tsx}",
+        "!src/types/**",
         "!**/node_modules/**",
         "!**/*.test.{ts,tsx}",
         "!**/tests/**",
     ],
-    coverageReporters: ["text", { skipFull: true }],
+    coverageReporters: ["text"],
     coverageProvider: "v8",
 
     // typescript & esm compatibility
