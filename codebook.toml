@@ -1,1 +1,7 @@
-words = ["sobel"]
+words = [
+    "esm",
+    "gaussians",
+    "greyscale",
+    "lcov",
+    "sobel",
+]

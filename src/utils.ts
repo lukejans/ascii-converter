@@ -7,13 +7,13 @@ export function mapValue(
 ): number {
     // get the number of values in each range to calculate
     // a values proportion.
-    let inLen = inEnd - inStart;
-    let outLen = outEnd - outStart;
+    const inLength = inEnd - inStart;
+    const outLength = outEnd - outStart;
 
     // calculate the proportion of `value` within the input
     // range. This will be a percentage between 0 and 1.
-    let proportion = (value - inStart) / inLen;
+    const proportion = (value - inStart) / inLength;
 
     // convert the proportion to the output range.
-    return proportion * outLen + outStart;
+    return proportion * outLength + outStart;
 }
