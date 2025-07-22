@@ -44,7 +44,7 @@ export default class ASCIIImg {
         const mods: ImgModifications = {
             width: modInfo?.width ?? 80,
             height: modInfo?.height ?? 40,
-            threshold: modInfo?.threshold ?? 0.8,
+            threshold: modInfo?.threshold ?? 0.6,
         };
 
         // Create the preprocessed Sharp instance (resized and greyscaled)
