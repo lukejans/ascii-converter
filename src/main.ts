@@ -6,7 +6,7 @@ import ASCIIImg from "./ascii-image.ts";
 import { mapValue } from "./utils.ts";
 
 const DENSITY = "#$?0=*c~. ";
-// const FRAMES_DIR = "public/frames";
+const FRAMES_DIR = "bin/frames";
 
 /**
  * Convert edges in an image to ASCII / text. This will apply the Sobel
@@ -161,7 +161,7 @@ function determineEdgeChar(angle: number) {
     } else if (angle >= 110 && angle <= 160) {
         edgeChar = "/";
     } else {
-        edgeChar = " ";
+        edgeChar = ".";
     }
 
     return edgeChar;
@@ -186,33 +186,30 @@ async function luminanceToASCII(asciiImg: ASCIIImg): Promise<ASCIIImg> {
 }
 
 // load all the files
-// const frameFiles = await fs
-//     .readdir(FRAMES_DIR)
-//     .then((res) => res.sort())
-//     .catch((err) => {
-//         throw new Error(err);
-//     });
+const frameFiles = await fs
+    .readdir(FRAMES_DIR)
+    .then((res) => res.sort())
+    .catch((err) => {
+        throw new Error(err);
+    });
 
 // process each frame file
 const asciiFrames: string[][] = [];
-// for (let i = 0; i < frameFiles.length; i++) {
-//     const buffer = await fs.readFile(path.resolve(FRAMES_DIR, frameFiles[i]));
+for (let i = 0; i < frameFiles.length; i++) {
+    const buffer = await fs.readFile(path.resolve(FRAMES_DIR, frameFiles[i]));
 
-//     const asciiImg = await ASCIIImg.init(buffer);
+    const asciiImg = await ASCIIImg.init(buffer, {
+        width: 120,
+        height: 60,
+        threshold: 0.6,
+    });
 
-//     await sobelToASCII(asciiImg);
-//     await luminanceToASCII(asciiImg);
+    await sobelToASCII(asciiImg);
+    await luminanceToASCII(asciiImg);
 
-//     // create an array to store each frame
-//     asciiFrames[i] = asciiImg.text;
-// }
-
-const buffer = await fs.readFile(path.resolve("./assets/joystick.png"));
-
-const asciiImg = await ASCIIImg.init(buffer);
-await sobelToASCII(asciiImg);
-await luminanceToASCII(asciiImg);
-asciiFrames[0] = asciiImg.text;
+    // create an array to store each frame
+    asciiFrames[i] = asciiImg.text;
+}
 
 // all files have been processed so write to an output file
-fs.writeFile("frames.json", JSON.stringify(asciiFrames));
+fs.writeFile("./bin/frames.json", JSON.stringify(asciiFrames));
