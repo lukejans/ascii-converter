@@ -2,17 +2,23 @@ import { createDefaultEsmPreset } from "ts-jest";
 
 /** @type {import('jest').Config} */
 const config = {
-    // environment
+    // testing
     testEnvironment: "node",
+    testMatch: [
+        "**/*.test.ts",
+        "**/tests/**",
+        "!**/__fixtures__/**",
+        "!**/node_modules/**",
+    ],
     clearMocks: true,
 
     // coverage
     collectCoverage: true,
     collectCoverageFrom: [
-        "src/**/*.{ts,tsx}",
+        "src/**/*.ts",
         "!src/types/**",
         "!**/node_modules/**",
-        "!**/*.test.{ts,tsx}",
+        "!**/*.test.ts",
         "!**/tests/**",
     ],
     coverageReporters: ["text"],
