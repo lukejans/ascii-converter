@@ -1,2 +1,3 @@
 onlyBuiltDependencies:
-    - sharp
+  - sharp
+  - unrs-resolver
