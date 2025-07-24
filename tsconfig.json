@@ -3,6 +3,11 @@
         // environment
         "target": "ES2022",
         "lib": ["ES2022"],
+        // "experimentalDecorators": true,
+
+        // js support
+        "allowJs": true,
+        "checkJs": true,
 
         // module
         "module": "NodeNext",
@@ -10,12 +15,15 @@
         "noUncheckedSideEffectImports": true,
         "rewriteRelativeImportExtensions": true,
         "resolveJsonModule": true,
+
+        // interop constraints
         "verbatimModuleSyntax": true,
         "isolatedModules": true,
 
         // emit
         "outDir": "dist",
         "removeComments": true,
+        "sourceMap": true,
 
         // type checking
         "strict": true,
@@ -25,6 +33,8 @@
         "noImplicitOverride": true,
         "allowUnreachableCode": false,
         "noFallthroughCasesInSwitch": true,
+
+        // completeness
         "skipLibCheck": true
     },
     "include": ["src"],
