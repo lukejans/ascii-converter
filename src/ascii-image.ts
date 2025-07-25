@@ -40,9 +40,18 @@ export default class AsciiImg {
                 height: this.mods.height,
                 fit: "fill",
             })
-            .flatten()
-            .greyscale()
-            .normalise();
+            /**
+             * BUG: when processing images with flatten and normalise the
+             *      image have quite a mangled output such as not rendering
+             *      much of the edges as well as rendering too much in other
+             *      areas... Do more research into the effects of these
+             *      operations and how other operations can be used to improve
+             *      the output.
+             */
+            // .flatten()
+            // .grayscale()
+            // .normalise()
+            .greyscale();
 
         // create an array of empty string for each row of pixels that
         // will be converted into characters.
@@ -149,32 +158,28 @@ export default class AsciiImg {
                 // that pixel as an edge.
                 if (curMagnitude > threshold) {
                     // get the angle of the gradient in the range [-π, π]
-                    const gradientAngle = Math.atan2(
+                    const gradientAngleRad = Math.atan2(
                         // read 2 bytes at a time in little-endian byte order
                         data.Gy.getInt16(index * 2, true),
                         data.Gx.getInt16(index * 2, true),
                     );
 
-                    // get the angle perpendicular to the gradient
-                    const edgeAngle = gradientAngle + Math.PI / 2;
-
-                    // normalize the angle to the range [0, π]
-                    let normalizedAngle = edgeAngle % Math.PI;
-                    if (normalizedAngle < 0) normalizedAngle += Math.PI;
-
-                    // convert to more human friendly degrees
-                    const angleDeg = Math.round(
-                        (normalizedAngle * 180) / Math.PI,
+                    // convert the angle to degrees [-180º, 180º]
+                    const gradientAngleDeg = Math.round(
+                        (gradientAngleRad * 180) / Math.PI,
                     );
 
+                    // the edge is the angle perpendicular to the gradient
+                    let edgeAngleDeg = gradientAngleDeg + 90;
+
+                    // normalize the angle to the range [0º, 180º]
+                    edgeAngleDeg %= 180;
+                    if (edgeAngleDeg < 0) edgeAngleDeg += 180;
+
                     // determine what character to use based on the angle
-                    // NOTE: there is currently no way to find a way to detect when corners
-                    // are present. This might have to be done as a postprocess to check a
-                    // chars neighbors for blank spaces to detect a corner. This will greatly
-                    // improve the final border output as "/-" doesn't make a nice corner.
-                    this.#stitchText(row, col, determineEdgeChar(angleDeg));
+                    this.stitchText(row, col, determineEdgeChar(edgeAngleDeg));
                 } else {
-                    this.#stitchText(row, col, " ");
+                    this.stitchText(row, col, " ");
                 }
             }
         }
@@ -193,7 +198,7 @@ export default class AsciiImg {
                 const pixel = row * this.mods.width + col;
 
                 // add a character (pixel) to the row
-                this.#stitchText(row, col, determineLumaChar(buffer[pixel]));
+                this.stitchText(row, col, determineLumaChar(buffer[pixel]));
             }
         }
         return this;
@@ -209,7 +214,7 @@ export default class AsciiImg {
      * @param pixelCol - the location in the row
      * @param char - the character to place at the pixel location
      */
-    #stitchText(pixelRow: number, pixelCol: number, char: string) {
+    stitchText(pixelRow: number, pixelCol: number, char: string) {
         const target = this.#text[pixelRow][pixelCol];
 
         if (target === " ") {
