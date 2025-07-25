@@ -1,7 +1,9 @@
 words = [
+    "ascii",
     "esm",
     "gaussians",
     "greyscale",
     "lcov",
+    "luma",
     "sobel",
 ]

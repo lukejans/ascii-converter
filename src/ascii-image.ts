@@ -1,77 +1,232 @@
 import sharp from "sharp";
 import type { ImgModifications } from "./types/image.ts";
+import { determineEdgeChar, determineLumaChar } from "./utils/char.ts";
 
-export default class ASCIIImg {
+export default class AsciiImg {
     /**
-     * Preprocessed Sharp instance (resized and greyscaled) that can be
-     * reused for different operations without redundant processing
+     * This sharp instance is a resized, grey-scaled, normalized, and
+     * flattened image that all other pipelines will branch off of for
+     * text conversion.
      */
-    preprocessedSharp: sharp.Sharp;
+    pipeline: sharp.Sharp;
 
     /**
-     * Raw grayscale pixel buffer for luminance-based operations
-     */
-    buffer: Buffer;
-
-    /**
-     * What modifications should be made to the image during the initial
-     * preprocessing step. Its recommended to have a ~2:1 (w:h) aspect
-     * ratio as text is taller than wide. Note that the threshold mod
-     * will change the way that the image is processed during all runtime
-     * transformations.
+     * These modifications control resizing and threshold effects. Its
+     * recommended to have a ~2:1 (w:h) aspect ratio as text is taller
+     * than wide. The threshold controls what pixels to render as text.
      */
     mods: ImgModifications;
 
     /**
-     * The result of converting the image two ascii through various
-     * transformations. Note that the order of processing is important
-     * as all transformation will only overwrite blank spaces.
+     * The result of converting the image to ascii.
      */
     #text: string[];
 
-    private constructor(
-        preprocessedSharp: sharp.Sharp,
-        rawBuffer: Buffer,
-        modInfo: ImgModifications,
-    ) {
-        this.mods = modInfo;
-        this.preprocessedSharp = preprocessedSharp;
-        this.buffer = rawBuffer;
+    constructor(imgBuffer: Buffer, imgMods?: ImgModifications) {
+        this.mods = imgMods
+            ? imgMods
+            : {
+                  width: 100,
+                  height: 50,
+                  threshold: 0.7,
+              };
+
+        // these preprocessing steps help ensure the image is ready to
+        // go through all processing steps by removing alpha channels,
+        // converting to a luminance only image, then normalizing.
+        this.pipeline = sharp(imgBuffer)
+            .resize({
+                width: this.mods.width,
+                height: this.mods.height,
+                fit: "fill",
+            })
+            /**
+             * BUG: when processing images with flatten and normalise the
+             *      image have quite a mangled output such as not rendering
+             *      much of the edges as well as rendering too much in other
+             *      areas... Do more research into the effects of these
+             *      operations and how other operations can be used to improve
+             *      the output.
+             */
+            // .flatten()
+            // .grayscale()
+            // .normalise()
+            .greyscale();
+
+        // create an array of empty string for each row of pixels that
+        // will be converted into characters.
         this.#text = Array(this.mods.height).fill("");
     }
 
-    static async init(imgBuffer: Buffer, modInfo?: ImgModifications) {
-        const mods: ImgModifications = {
-            width: modInfo?.width ?? 80,
-            height: modInfo?.height ?? 40,
-            threshold: modInfo?.threshold ?? 0.6,
+    /**
+     * Convert edges in an image to text. This will apply the Sobel operators
+     * to compute an approximation of the gradient in the x and y directions.
+     * Since the results are vectors, we can use the x and y components to
+     * calculate the direction perpendicular to the gradient to choose the
+     * most accurate EDGE_CHARS.
+     *
+     * ```
+     *      |-1  0  1 |
+     * Gx = |-2  0  2 | * img
+     *      |-1  0  1 |
+     *
+     *      |-1 -2 -1 |
+     * Gy = | 0  0  0 | * img
+     *      | 1  2  1 |
+     * ```
+     *
+     * @param imgInfo
+     *
+     * @link https://en.wikipedia.org/wiki/Kernel_(image_processing)
+     * @link https://en.wikipedia.org/wiki/Sobel_operator
+     */
+    async edgeToAscii(): Promise<this> {
+        // apply the sobel operators to the image via convolution
+        // and return the result in raw format with the depth of
+        // short to preserve signed values outside the range 0-255.
+        const gx = await this.pipeline
+            .clone()
+            .convolve({
+                width: 3,
+                height: 3,
+                kernel: [-1, 0, 1, -2, 0, 2, -1, 0, 1],
+            })
+            .raw({ depth: "short" })
+            .toBuffer();
+
+        const gy = await this.pipeline
+            .clone()
+            .convolve({
+                width: 3,
+                height: 3,
+                kernel: [-1, -2, -1, 0, 0, 0, 1, 2, 1],
+            })
+            .raw({ depth: "short" })
+            .toBuffer();
+
+        const data = {
+            Gx: new DataView(gx.buffer),
+            Gy: new DataView(gy.buffer),
+
+            /**
+             * magnitudes are used alongside the threshold to determine
+             * what pixels should be included in the output.
+             */
+            magnitude: {
+                all: new DataView(
+                    new ArrayBuffer(this.mods.width * this.mods.height * 4),
+                ),
+                max: -Infinity,
+            },
         };
 
-        // Create the preprocessed Sharp instance (resized and greyscaled)
-        const preprocessedSharp = sharp(imgBuffer)
-            .resize({
-                width: mods.width,
-                height: mods.height,
-                fit: "fill",
-            })
-            .greyscale();
+        // calculate the magnitudes and find the max magnitude
+        for (let row = 0; row < this.mods.height; row++) {
+            for (let col = 0; col < this.mods.width; col++) {
+                // this is the current index if each pixel were a single byte.
+                const index = row * this.mods.width + col;
 
-        // Get raw buffer for luminance operations
-        const rawBuffer = await preprocessedSharp.clone().raw().toBuffer();
+                // magnitude = √(Gx² + Gy²)
+                const curMagnitude = Math.sqrt(
+                    // read 2 bytes at a time in little-endian byte order
+                    data.Gx.getInt16(index * 2, true) ** 2 +
+                        data.Gy.getInt16(index * 2, true) ** 2,
+                );
 
-        return new ASCIIImg(preprocessedSharp, rawBuffer, mods);
+                // find the max magnitude
+                data.magnitude.max = Math.max(data.magnitude.max, curMagnitude);
+                // add the calculated magnitude (4 byte write in little endian)
+                data.magnitude.all.setFloat32(index * 4, curMagnitude, true);
+            }
+        }
+
+        // calculate the threshold based on the max magnitude
+        const threshold = data.magnitude.max * this.mods.threshold;
+
+        // build the ASCII image
+        for (let row = 0; row < this.mods.height; row++) {
+            for (let col = 0; col < this.mods.width; col++) {
+                // this is the current index if each pixel were a single byte.
+                const index = row * this.mods.width + col;
+
+                const curMagnitude = data.magnitude.all.getFloat32(
+                    index * 4, // read 4 bytes at a time
+                    true, // in little-endian byte order
+                );
+
+                // before making any calculations, make sure we want to render
+                // that pixel as an edge.
+                if (curMagnitude > threshold) {
+                    // get the angle of the gradient in the range [-π, π]
+                    const gradientAngleRad = Math.atan2(
+                        // read 2 bytes at a time in little-endian byte order
+                        data.Gy.getInt16(index * 2, true),
+                        data.Gx.getInt16(index * 2, true),
+                    );
+
+                    // convert the angle to degrees [-180º, 180º]
+                    const gradientAngleDeg = Math.round(
+                        (gradientAngleRad * 180) / Math.PI,
+                    );
+
+                    // the edge is the angle perpendicular to the gradient
+                    let edgeAngleDeg = gradientAngleDeg + 90;
+
+                    // normalize the angle to the range [0º, 180º]
+                    edgeAngleDeg %= 180;
+                    if (edgeAngleDeg < 0) edgeAngleDeg += 180;
+
+                    // determine what character to use based on the angle
+                    this.stitchText(row, col, determineEdgeChar(edgeAngleDeg));
+                } else {
+                    this.stitchText(row, col, " ");
+                }
+            }
+        }
+        return this;
     }
 
-    stich(pixelRow: number, pixelCol: number, char: string): void {
-        const target: string | undefined = this.#text[pixelRow][pixelCol];
+    /**
+     * @link https://en.wikipedia.org/wiki/Relative_luminance
+     */
+    async lumaToAscii(): Promise<this> {
+        const buffer = await this.pipeline.clone().raw().toBuffer();
 
-        if (target === undefined) {
-            this.#text[pixelRow] += char;
-        } else if (target === " ") {
+        for (let row = 0; row < this.mods.height; row++) {
+            for (let col = 0; col < this.mods.width; col++) {
+                // get each pixel in order from left to right, top to bottom
+                const pixel = row * this.mods.width + col;
+
+                // add a character (pixel) to the row
+                this.stitchText(row, col, determineLumaChar(buffer[pixel]));
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Add a character to the text array at a given pixel index. This
+     * will only add a character representation of a pixel at that
+     * location if there isn't already a character there or if the
+     * character is a space.
+     *
+     * @param pixelRow - the row where char will be placed
+     * @param pixelCol - the location in the row
+     * @param char - the character to place at the pixel location
+     */
+    stitchText(pixelRow: number, pixelCol: number, char: string) {
+        const target = this.#text[pixelRow][pixelCol];
+
+        if (target === " ") {
+            // a space character was found so stitch the character
             this.#text[pixelRow] =
                 this.#text[pixelRow].slice(0, pixelCol) +
                 char +
                 this.#text[pixelRow].slice(pixelCol + 1);
+        } else if (target === undefined) {
+            // there was no text created yet so we can simply add
+            // the character to a row.
+            this.#text[pixelRow] += char;
         }
     }
 
