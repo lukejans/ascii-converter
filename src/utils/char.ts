@@ -1,6 +1,7 @@
+import { LUMA_CHARS } from "../config.ts";
 import { mapValue } from "./math.ts";
 
-export function determineEdgeChar(angle: number) {
+export function edgeToChar(angle: number) {
     let edgeChar: string = "";
 
     if ((angle >= 0 && angle <= 19) || (angle <= 180 && angle >= 161)) {
@@ -26,12 +27,11 @@ export function determineEdgeChar(angle: number) {
     return edgeChar;
 }
 
-export function determineLumaChar(luminance: number) {
+export function lumaToChar(luminance: number) {
     // the characters being used to represent the luma in an image
     // which is a practical measurement of a pixels brightness. This
     // charset is listed from darkest to brightest which is currently
     // being represented as most to least dense.
-    const LUMA_CHARS = "#$?0=*c~. ";
 
     // map the luma to a character
     const index = Math.floor(

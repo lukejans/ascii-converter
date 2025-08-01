@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import type { ImgModifications } from "./types/image.ts";
-import { determineEdgeChar, determineLumaChar } from "./utils/char.ts";
+import { edgeToChar, lumaToChar } from "./utils/char.ts";
 
 export default class AsciiImg {
     /**
@@ -177,7 +177,7 @@ export default class AsciiImg {
                     if (edgeAngleDeg < 0) edgeAngleDeg += 180;
 
                     // determine what character to use based on the angle
-                    this.stitchText(row, col, determineEdgeChar(edgeAngleDeg));
+                    this.stitchText(row, col, edgeToChar(edgeAngleDeg));
                 } else {
                     this.stitchText(row, col, " ");
                 }
@@ -198,7 +198,7 @@ export default class AsciiImg {
                 const pixel = row * this.mods.width + col;
 
                 // add a character (pixel) to the row
-                this.stitchText(row, col, determineLumaChar(buffer[pixel]));
+                this.stitchText(row, col, lumaToChar(buffer[pixel]));
             }
         }
         return this;
