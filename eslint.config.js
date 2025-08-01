@@ -14,5 +14,10 @@ export default tseslint.config(
                 ...globals.jest,
             },
         },
+        rules: {
+            // this is disabled because ts already handles it.
+            "no-unused-vars": "off",
+            "@typescript-eslint/no-unused-vars": "off",
+        },
     },
 );
