@@ -18,6 +18,9 @@ importers:
         specifier: ^0.34.3
         version: 0.34.3
     devDependencies:
+      '@commander-js/extra-typings':
+        specifier: ^14.0.0
+        version: 14.0.0(commander@14.0.0)
       '@eslint/js':
         specifier: ^9.32.0
         version: 9.32.0
