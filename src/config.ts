@@ -1,3 +1,27 @@
-export const PHOTO_EXT = new Set(["png", "jpg", "avif"]);
-export const VIDEO_EXT = new Set(["mp4", "mov"]);
-export const LUMA_CHARS = "#$?0=*c~. ";
+import { nanoid } from "nanoid";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+const frameFiles: string[] = [];
+
+const config = {
+    ext: {
+        photo: new Set(["png", "jpg", "avif"]),
+        video: new Set(["mp4", "mov"]),
+    },
+    chars: {
+        luma: "#$?0=*c~. ",
+    },
+    threshold: {
+        luma: 0.7,
+    },
+    tmpDir: fs.mkdtempSync(path.join(os.tmpdir(), "frames_")),
+    asciiResult: path.resolve(`ascii_${nanoid(10)}.json`),
+    frames: {
+        rate: 45,
+        source: frameFiles,
+    },
+};
+
+export default config;
