@@ -3,6 +3,7 @@ words = [
     "avif",
     "enoent",
     "errno",
+    "esc",
     "esm",
     "ffprobe",
     "gaussians",

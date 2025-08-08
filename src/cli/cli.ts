@@ -1,10 +1,12 @@
-import { Command } from "@commander-js/extra-typings";
-import { nanoid } from "nanoid";
 import fs from "node:fs";
 import path from "node:path";
-import config from "../config.ts";
 import * as parsers from "./parsers.ts";
-import { runCmd } from "./validation.ts";
+
+import { Command, Option } from "commander";
+import { nanoid } from "nanoid";
+import { state } from "../globals.ts";
+import { extensions } from "../utils/support.ts";
+import { runCmd, validateOutputOpt } from "./validation.ts";
 
 const program = new Command()
     .name("to-ascii")
@@ -16,20 +18,23 @@ const program = new Command()
         "the path to an image or video [png, jpeg, mp4, mov]",
         parsers.parseInputOpt,
     )
-    .option(
-        "-o, --output <path>",
-        "the json file to use as output",
-        `ascii_${nanoid(10)}.json`,
+    .addOption(
+        new Option("-o, --output <path>", "the json file to use as output")
+            .argParser(parsers.parseOutputOpt)
+            .default(
+                path.resolve(`ascii_${nanoid(10)}.json`),
+                "ascii_uuid.json",
+            ),
     )
     .option(
-        "-s, --space <string>",
-        "what to replace space characters with",
+        "-s, --space-char <string>",
+        "what to replace space characters with (escape sequences)",
         " ",
     )
     .option(
         "-p, --pixels <string>",
         "the characters to use as pixels",
-        "#$?0=*c~. ",
+        "#$?0=x*~. ",
     )
     .option(
         "-t, --threshold <float>",
@@ -47,98 +52,68 @@ const program = new Command()
             .implies({ frameRate: 30 })
             .default(false),
     )
-    .option("-P, --preview", "preview the result in stdout")
-    .option("-f, --force", "overwrite existing destination files")
-    .option("-d, --debug", "enable debug mode to see extra logging")
-    .action((options) => {
-        // resolve output path for better portability
-        options.output = path.resolve(options.output);
-
-        // if the output file already exists get it's information
-        const outputFileStats = fs.existsSync(options.output)
-            ? fs.statSync(options.output)
-            : undefined;
-
-        // since the path exists check if its a file or directory and
-        // make sure no files or directories are overwritten unless
-        // the [-f] option is also present.
-        if (outputFileStats?.isFile()) {
-            // error out if the force option isn't present
-            if (!options.force) {
-                program.error(
-                    "error: output file already exists. Use the [-f] option to overwrite the existing file.",
-                );
-            }
-        } else if (outputFileStats?.isDirectory()) {
-            program.error(
-                "error: output file name collides with an existing directory.",
-            );
-        }
-
-        // make sure the destination directory exists before writing to it
-        const destDir = path.dirname(options.output);
-        fs.mkdirSync(destDir, { recursive: true }); // `$ mkdir -p`
-
-        // check if the input file type is in a video or photo format. Then
-        // run the program on that file. Note that we already the file has
-        // a valid ext so we can get away with only checking if its one or
-        // the other here.
-        if (
-            config.ext.video.has(
-                path.extname(options.input).replace(".", "").toLowerCase(),
-            )
-        ) {
-            // check the duration of the video and the frame rate
-            const ffprobeRes = runCmd(
-                "ffprobe",
-                `-v error -count_frames -select_streams v:0 \
-                    -show_entries stream=nb_read_frames \
-                    -of default=nokey=1:noprint_wrappers=1 ${options.input}`,
-            );
-
-            // get the total number of frames in the video
-            if (ffprobeRes.code === "ERROR") {
-                program.error(
-                    `error: could not read video metadata with '${ffprobeRes.cmd}'
-                        \n${ffprobeRes.stderr}`,
-                );
-                // BUG: typescript doesn't realize program.error never returns
-                //      so this is here only so ffprobe can be used without ts
-                //      complaining.
-                process.exit(1);
-            }
-
-            // calculate the number of digits needed to represent the frames
-            const frameDigitLen = Math.ceil(
-                Math.log10(Number(ffprobeRes.stdout)),
-            );
-
-            // split the video into frames
-            const ffmpegRes = runCmd(
-                "ffmpeg",
-                `-loglevel quiet \
-                    -i ${options.input} \
-                    ${path.join(config.tmpDir, `frame_%0${frameDigitLen}d.png`)}`,
-            );
-
-            if (ffmpegRes.code === "ERROR") {
-                program.error(
-                    `error: could not split the video into frames with '${ffmpegRes.cmd}'
-                        \n${ffmpegRes.stderr}`,
-                );
-            }
-
-            config.frames.source.push(...fs.readdirSync(config.tmpDir).sort());
-
-            // make sure all paths are resolved for portability
-            for (let i = 0; i < config.frames.source.length; i++) {
-                config.frames.source[i] = path.resolve(
-                    config.tmpDir,
-                    config.frames.source[i],
-                );
-            }
-        } else {
-            config.frames.source.push(options.input);
-        }
-    })
+    .option("-f, --force", "overwrite existing destination files", false)
+    .option("-d, --debug", "enable debug mode to see extra logging", false)
     .parse();
+
+export const options = program.opts();
+
+// === post-parse validation ===
+
+validateOutputOpt(options.output, options.force);
+
+// === frame creation ===
+
+const inputExt = path.extname(options.input).replace(".", "").toLowerCase();
+if (extensions.validate(inputExt) === "video") {
+    // check the duration of the video and the frame rate
+    const ffprobeRes = runCmd(
+        "ffprobe",
+        `-v error -count_frames -select_streams v:0 \
+                -show_entries stream=nb_read_frames \
+                -of default=nokey=1:noprint_wrappers=1 ${options.input}`,
+    );
+
+    // get the total number of frames in the video
+    if (ffprobeRes.code === "ERROR") {
+        program.error(
+            `error: could not read video metadata with '${ffprobeRes.cmd}'
+                    \n${ffprobeRes.stderr}`,
+        );
+        // BUG: typescript doesn't realize program.error never returns
+        //      so this is here for typescript to realize all code beyond
+        //      this point is unreachable.
+        process.exit(1);
+    }
+
+    // calculate the number of digits needed to represent the frames
+    const frameDigitLen = Math.ceil(Math.log10(Number(ffprobeRes.stdout)));
+
+    // split the video into frames
+    const ffmpegRes = runCmd(
+        "ffmpeg",
+        `-loglevel quiet \
+                -i ${options.input} \
+                ${path.join(state.tmpDir, `frame_%0${frameDigitLen}d.png`)}`,
+    );
+
+    if (ffmpegRes.code === "ERROR") {
+        program.error(
+            `error: could not split the video into frames with '${ffmpegRes.cmd}'
+                    \n${ffmpegRes.stderr}`,
+        );
+        // BUG: typescript doesn't realize program.error never returns
+        //      so this is here for typescript to realize all code beyond
+        //      this point is unreachable.
+        process.exit(1);
+    }
+
+    state.frames.push(...fs.readdirSync(state.tmpDir).sort());
+
+    // make sure all paths are resolved for portability
+    for (let i = 0; i < state.frames.length; i++) {
+        state.frames[i] = path.resolve(state.tmpDir, state.frames[i]);
+    }
+} else {
+    state.frames.push(options.input);
+}

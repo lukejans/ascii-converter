@@ -1,3 +1,5 @@
+export type CommandOptions = typeof import("../cli/cli.ts").options;
+
 export interface ValidCmdResult {
     code: "OK";
     cmd: string;
