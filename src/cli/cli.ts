@@ -35,7 +35,17 @@ const program = new Command()
         "-t, --threshold <float>",
         "luminance threshold to which a char should be rendered [0, 1]",
         parsers.parseThresholdOpt,
-        0.7,
+        0.75,
+    )
+    .option(
+        "-r, --frame-rate <fps>",
+        "frame rate at which the preview should be rendered",
+        parsers.parseFrameRateOpt,
+    )
+    .addOption(
+        new Option("-P, --preview", "preview the result in stdout")
+            .implies({ frameRate: 30 })
+            .default(false),
     )
     .option("-P, --preview", "preview the result in stdout")
     .option("-f, --force", "overwrite existing destination files")

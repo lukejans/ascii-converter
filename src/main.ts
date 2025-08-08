@@ -56,3 +56,22 @@ process
     .on("SIGBREAK", gracefulExit) // winOS ctrl+Break
     .on("uncaughtException", gracefulExit) // uncaught exception
     .on("unhandledRejection", gracefulExit); // unhandled rejection
+
+// === ascii conversion ===
+
+await runConverter();
+
+// === run preview ===
+
+if (options.preview) {
+    let asciiFrames;
+    try {
+        asciiFrames = JSON.parse(fs.readFileSync(options.output, "utf8"));
+    } catch (error) {
+        if (error instanceof Error) {
+            console.error(`Error reading or parsing: ${error.message}`);
+        } else throw error;
+    }
+
+    previewAsciiAction(asciiFrames);
+}
