@@ -1,40 +1,42 @@
+import "./cli/cli.ts";
+
 import fs from "node:fs";
 import process from "node:process";
 
-import AsciiImg from "./ascii-image.ts";
-import config from "./config.ts";
+import { previewAsciiAction } from "./cli/actions.ts";
+import { options } from "./cli/cli.ts";
+import { runConverter } from "./converter/runner.ts";
+import { state } from "./globals.ts";
 
-const asciiFrames: string[][] = [];
+// === exit cleanup ===
 
-// ----------------
-// ascii conversion
-// ----------------
-
-// process each frame file
-for (let i = 0; i < config.frames.source.length; i++) {
-    const buffer = fs.readFileSync(config.frames.source[i]);
-
-    // create a text representation of the image
-    const asciiImg = new AsciiImg(buffer);
-    await asciiImg.edgeToAscii();
-    await asciiImg.lumaToAscii();
-
-    // create an array to store each frame
-    asciiFrames[i] = asciiImg.text;
-}
-
-// all files have been processed so write to an output file
-fs.writeFileSync(config.asciiResult, JSON.stringify(asciiFrames));
-console.log(`File written successfully to ${config.asciiResult}`);
-
-const gracefulExit = (function () {
+/**
+ * @internal
+ * gracefully exit the program / node process when event occurs
+ * which will cause the program to exit. This callback function
+ * will be attached to different process events that would exit
+ * the program such as; user termination, program completion, or
+ * an error.
+ *
+ * @param code - value from the process.exit emitted event
+ */
+const gracefulExit = (() => {
     let clean = false;
 
-    return (code: NodeJS.Signals | Error | string | number) => {
+    return function (code: NodeJS.Signals | Error | string | number) {
+        // set status to exit
+        state.live = false;
+
+        // make the cursor visible and disable alternate buffer
+        if (options.preview) {
+            process.stdout.write("\x1B[?25h");
+            process.stdout.write("\x1B[?1049l");
+        }
+
         if (!clean) {
             // perform the cleanup
-            if (fs.existsSync(config.tmpDir)) {
-                fs.rmSync(config.tmpDir, { recursive: true, force: true });
+            if (fs.existsSync(state.tmpDir)) {
+                fs.rmSync(state.tmpDir, { recursive: true, force: true });
             }
             // make sure we only cleanup once
             clean = true;
@@ -42,7 +44,7 @@ const gracefulExit = (function () {
             // if the event that trigger the exit was an Error make
             // sure to still display the error message.
             if (code instanceof Error) {
-                console.log(code);
+                console.log(code.message);
             }
         }
     };

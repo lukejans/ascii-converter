@@ -1,7 +1,7 @@
 import sharp from "sharp";
-import config from "./config.ts";
-import type { ImgModifications } from "./types/image.types.ts";
-import { mapValue } from "./utils/math.ts";
+import { options } from "../cli/cli.ts";
+import type { ImgModifications } from "../types/image.types.ts";
+import { mapValue } from "../utils/math.ts";
 
 export default class AsciiImg {
     /**
@@ -270,8 +270,8 @@ function lumaToChar(luminance: number) {
 
     // map the luma to a character
     const index = Math.floor(
-        mapValue(luminance, 0, 255, 0, config.chars.luma.length - 1),
+        mapValue(luminance, 0, 255, 0, options.pixels.length - 1),
     );
 
-    return config.chars.luma[index];
+    return options.pixels[index];
 }

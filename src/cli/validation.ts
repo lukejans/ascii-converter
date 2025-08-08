@@ -1,7 +1,9 @@
 import { CommanderError } from "commander";
 import { execSync } from "node:child_process";
+import fs from "node:fs";
 import { isExecException } from "../utils/guards.ts";
 
+import path from "node:path";
 import type { CmdResult } from "../types/cli.types.ts";
 
 /**
@@ -35,9 +37,46 @@ export function runCmd(cmd: string, opts: string): CmdResult {
             };
         } else {
             throw new CommanderError(
-                101,
-                "UNKNOWN_ERROR",
-                "An unknown error occurred",
+                1,
+                "UNKNOWN_ERR",
+                `Unknown error running ${cmd} ${opts}`,
+            );
+        }
+    }
+}
+
+export function validateOutputOpt(outputPath: string, force: boolean) {
+    // if the output file already exists get it's information
+    const outputFileStats = fs.existsSync(outputPath)
+        ? fs.statSync(outputPath)
+        : undefined;
+
+    if (!outputFileStats) {
+        // if the output dir does not exist create it
+        const outputDir = path.dirname(outputPath);
+        fs.mkdirSync(outputDir, { recursive: true }); // `$ mkdir -p`
+    } else {
+        // since the path exists check if its a file or directory
+        // and make sure no files or directories are overwritten
+        // unless the [-f] option is also present.
+        if (outputFileStats.isFile()) {
+            // error out if the force option isn't present
+            if (!force) {
+                throw new Error(
+                    "error: output file already exists. Use the [-f] option to overwrite the existing file.",
+                );
+            }
+        } else if (outputFileStats.isDirectory()) {
+            throw new Error(
+                "error: output file name collides with an existing directory.",
+            );
+        }
+        // make sure the user has r/w permission
+        try {
+            fs.accessSync(outputPath, fs.constants.W_OK | fs.constants.R_OK);
+        } catch (err) {
+            throw new Error(
+                "error: output file needs read and write permissions.",
             );
         }
     }
