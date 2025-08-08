@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       commander:
-        specifier: ^14.0.0
+        specifier: ~14.0.0
         version: 14.0.0
       nanoid:
         specifier: ^5.1.5
@@ -19,7 +19,7 @@ importers:
         version: 0.34.3
     devDependencies:
       '@commander-js/extra-typings':
-        specifier: ^14.0.0
+        specifier: ~14.0.0
         version: 14.0.0(commander@14.0.0)
       '@eslint/js':
         specifier: ^9.32.0
