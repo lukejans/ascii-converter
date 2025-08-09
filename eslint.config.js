@@ -15,8 +15,7 @@ export default tseslint.config(
             },
         },
         rules: {
-            // this is disabled because ts already handles it.
-            "no-unused-vars": "off",
+            // typescript will already handles this
             "@typescript-eslint/no-unused-vars": "off",
         },
     },
