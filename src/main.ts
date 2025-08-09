@@ -1,3 +1,5 @@
+import "./globals.ts"; // change this
+//
 import "./cli/cli.ts";
 
 import fs from "node:fs";
@@ -6,7 +8,6 @@ import process from "node:process";
 import { previewAsciiAction } from "./cli/actions.ts";
 import { options } from "./cli/cli.ts";
 import { runConverter } from "./converter/runner.ts";
-import { state } from "./globals.ts";
 
 // === exit cleanup ===
 
@@ -25,7 +26,7 @@ const gracefulExit = (() => {
 
     return function (code: NodeJS.Signals | Error | string | number) {
         // set status to exit
-        state.live = false;
+        global.state.live = false;
 
         // make the cursor visible and disable alternate buffer
         if (options.preview) {
@@ -35,8 +36,11 @@ const gracefulExit = (() => {
 
         if (!clean) {
             // perform the cleanup
-            if (fs.existsSync(state.tmpDir)) {
-                fs.rmSync(state.tmpDir, { recursive: true, force: true });
+            if (fs.existsSync(global.state.tmpDir)) {
+                fs.rmSync(global.state.tmpDir, {
+                    recursive: true,
+                    force: true,
+                });
             }
             // make sure we only cleanup once
             clean = true;

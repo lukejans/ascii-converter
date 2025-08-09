@@ -4,7 +4,6 @@ import * as parsers from "./parsers.ts";
 
 import { Command, Option } from "commander";
 import { nanoid } from "nanoid";
-import { state } from "../globals.ts";
 import { extensions } from "../utils/support.ts";
 import { runCmd, validateOutputOpt } from "./validation.ts";
 
@@ -94,7 +93,7 @@ if (extensions.validate(inputExt) === "video") {
         "ffmpeg",
         `-loglevel quiet \
                 -i ${options.input} \
-                ${path.join(state.tmpDir, `frame_%0${frameDigitLen}d.png`)}`,
+                ${path.join(global.state.tmpDir, `frame_%0${frameDigitLen}d.png`)}`,
     );
 
     if (ffmpegRes.code === "ERROR") {
@@ -108,12 +107,15 @@ if (extensions.validate(inputExt) === "video") {
         process.exit(1);
     }
 
-    state.frames.push(...fs.readdirSync(state.tmpDir).sort());
+    global.state.frames.push(...fs.readdirSync(global.state.tmpDir).sort());
 
     // make sure all paths are resolved for portability
-    for (let i = 0; i < state.frames.length; i++) {
-        state.frames[i] = path.resolve(state.tmpDir, state.frames[i]);
+    for (let i = 0; i < global.state.frames.length; i++) {
+        global.state.frames[i] = path.resolve(
+            global.state.tmpDir,
+            global.state.frames[i],
+        );
     }
 } else {
-    state.frames.push(options.input);
+    global.state.frames.push(options.input);
 }

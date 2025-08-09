@@ -1,5 +1,4 @@
 import { hrtime } from "node:process";
-import { state } from "../globals.ts";
 import { options } from "./cli.ts";
 
 export async function previewAsciiAction(asciiFrames: string[][]) {
@@ -15,7 +14,7 @@ export async function previewAsciiAction(asciiFrames: string[][]) {
     } else {
         // infinite video loop
         let i = 0;
-        while (state.live) {
+        while (global.state.live) {
             // time frame display overhead so that the delay can be
             // adjusted to ensure a more consistent frame rate.
             const start = hrtime.bigint();
