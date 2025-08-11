@@ -1,11 +1,15 @@
 /**
  * Configuration for image modifications during ASCII conversion preprocessing
+ *
+ * @property width - width to resize the image to
+ * @property height - height to resize the image to
+ * @property threshold - threshold for pixel rendering [0, 1]
  */
 export interface ImgModifications {
-    /** Target width for the ASCII output */
+    /** Width to resize the image to */
     width: number;
-    /** Target height for the ASCII output */
+    /** Height to resize the image to */
     height: number;
-    /** Threshold multiplier for edge detection (0-1, where 1 is most sensitive) */
+    /** threshold for pixel rendering [0, 1] */
     threshold: number;
 }
