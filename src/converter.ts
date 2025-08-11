@@ -1,7 +1,6 @@
 import sharp from "sharp";
-import { options } from "../cli/cli.ts";
-import type { ImgModifications } from "../types/image.types.ts";
-import { mapValue } from "../utils/math.ts";
+import type { ImgModifications } from "./types/image.types.ts";
+import { mapValue } from "./utils.ts";
 
 export default class AsciiImg {
     /**
@@ -23,19 +22,16 @@ export default class AsciiImg {
      */
     #text: string[];
 
-    constructor(imgBuffer: Buffer, imgMods?: ImgModifications) {
-        this.mods = imgMods
-            ? imgMods
-            : {
-                  width: 100,
-                  height: 50,
-                  threshold: 0.7,
-              };
+    #pixels: string;
+
+    constructor(img: Buffer, imgMods: ImgModifications, pixels: string) {
+        this.mods = imgMods;
+        this.#pixels = pixels;
 
         // these preprocessing steps help ensure the image is ready to
         // go through all processing steps by removing alpha channels,
         // converting to a luminance only image, then normalizing.
-        this.pipeline = sharp(imgBuffer)
+        this.pipeline = sharp(img)
             .resize({
                 width: this.mods.width,
                 height: this.mods.height,
@@ -81,7 +77,7 @@ export default class AsciiImg {
      * @link https://en.wikipedia.org/wiki/Kernel_(image_processing)
      * @link https://en.wikipedia.org/wiki/Sobel_operator
      */
-    async edgeToAscii(): Promise<this> {
+    async edgeToAscii() {
         // apply the sobel operators to the image via convolution
         // and return the result in raw format with the depth of
         // short to preserve signed values outside the range 0-255.
@@ -178,7 +174,7 @@ export default class AsciiImg {
                     if (edgeAngleDeg < 0) edgeAngleDeg += 180;
 
                     // determine what character to use based on the angle
-                    this.stitchText(row, col, edgeToChar(edgeAngleDeg));
+                    this.stitchText(row, col, this.edgeToChar(edgeAngleDeg));
                 } else {
                     this.stitchText(row, col, " ");
                 }
@@ -190,7 +186,7 @@ export default class AsciiImg {
     /**
      * @link https://en.wikipedia.org/wiki/Relative_luminance
      */
-    async lumaToAscii(): Promise<this> {
+    async lumaToAscii() {
         const buffer = await this.pipeline.clone().raw().toBuffer();
 
         for (let row = 0; row < this.mods.height; row++) {
@@ -199,10 +195,37 @@ export default class AsciiImg {
                 const pixel = row * this.mods.width + col;
 
                 // add a character (pixel) to the row
-                this.stitchText(row, col, lumaToChar(buffer[pixel]));
+                this.stitchText(row, col, this.lumaToChar(buffer[pixel]));
             }
         }
         return this;
+    }
+
+    async diffOfGaussians() {
+        const buffer = await this.pipeline.clone().raw().toBuffer();
+
+        const diff = await sharp(buffer)
+            .normalise()
+            .blur(1)
+            .greyscale()
+            .composite([
+                {
+                    input: await sharp(buffer)
+                        .normalise()
+                        .blur(2)
+                        .greyscale()
+                        .toBuffer(),
+                    blend: "difference",
+                },
+            ])
+            .toBuffer();
+
+        const res = await sharp(diff)
+            .threshold(1)
+            .removeAlpha()
+            .toBuffer({ resolveWithObject: true });
+
+        return res;
     }
 
     /**
@@ -231,47 +254,47 @@ export default class AsciiImg {
         }
     }
 
+    private lumaToChar(luminance: number) {
+        // the characters being used to represent the luma in an image
+        // which is a practical measurement of a pixels brightness. This
+        // charset is listed from darkest to brightest which is currently
+        // being represented as most to least dense.
+
+        // map the luma to a character
+        const index = Math.floor(
+            mapValue(luminance, 0, 255, 0, this.#pixels.length - 1),
+        );
+
+        return this.#pixels[index];
+    }
+
+    private edgeToChar(angle: number) {
+        let edgeChar: string = "";
+
+        if ((angle >= 0 && angle <= 19) || (angle <= 180 && angle >= 161)) {
+            // 38º of range
+            edgeChar = "-";
+        } else if (angle >= 20 && angle <= 70) {
+            // 50º of range
+            edgeChar = "\\";
+        } else if (angle >= 71 && angle <= 109) {
+            // 38º of range
+            edgeChar = "|";
+        } else if (angle >= 110 && angle <= 160) {
+            // 50º of range
+            edgeChar = "/";
+        } else {
+            // TODO: this currently will never trigger but in the future
+            //       try to find a method to detect corner chars. But this
+            //       might only be possible in low detail images such as
+            //       clip art.
+            edgeChar = "+";
+        }
+
+        return edgeChar;
+    }
+
     get text(): string[] {
         return this.#text;
     }
-}
-
-function edgeToChar(angle: number) {
-    let edgeChar: string = "";
-
-    if ((angle >= 0 && angle <= 19) || (angle <= 180 && angle >= 161)) {
-        // 38º of range
-        edgeChar = "-";
-    } else if (angle >= 20 && angle <= 70) {
-        // 50º of range
-        edgeChar = "\\";
-    } else if (angle >= 71 && angle <= 109) {
-        // 38º of range
-        edgeChar = "|";
-    } else if (angle >= 110 && angle <= 160) {
-        // 50º of range
-        edgeChar = "/";
-    } else {
-        // TODO: this currently will never trigger but in the future
-        //       try to find a method to detect corner chars. But this
-        //       might only be possible in low detail images such as
-        //       clip art.
-        edgeChar = "+";
-    }
-
-    return edgeChar;
-}
-
-function lumaToChar(luminance: number) {
-    // the characters being used to represent the luma in an image
-    // which is a practical measurement of a pixels brightness. This
-    // charset is listed from darkest to brightest which is currently
-    // being represented as most to least dense.
-
-    // map the luma to a character
-    const index = Math.floor(
-        mapValue(luminance, 0, 255, 0, options.pixels.length - 1),
-    );
-
-    return options.pixels[index];
 }
