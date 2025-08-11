@@ -31,24 +31,27 @@ export default class AsciiImg {
         // these preprocessing steps help ensure the image is ready to
         // go through all processing steps by removing alpha channels,
         // converting to a luminance only image, then normalizing.
-        this.pipeline = sharp(img)
-            .resize({
-                width: this.mods.width,
-                height: this.mods.height,
-                fit: "fill",
-            })
-            /**
-             * BUG: when processing images with flatten and normalise the
-             *      image have quite a mangled output such as not rendering
-             *      much of the edges as well as rendering too much in other
-             *      areas... Do more research into the effects of these
-             *      operations and how other operations can be used to improve
-             *      the output.
-             */
-            // .flatten()
-            // .grayscale()
-            // .normalise()
-            .greyscale();
+        this.pipeline =
+            imgMods.width <= 0 || imgMods.height <= 0
+                ? sharp(img)
+                : sharp(img)
+                      .resize({
+                          width: this.mods.width,
+                          height: this.mods.height,
+                          fit: "fill",
+                      })
+                      /**
+                       * BUG: when processing images with flatten and normalise the
+                       *      image have quite a mangled output such as not rendering
+                       *      much of the edges as well as rendering too much in other
+                       *      areas... Do more research into the effects of these
+                       *      operations and how other operations can be used to improve
+                       *      the output.
+                       */
+                      // .flatten()
+                      // .grayscale()
+                      // .normalise()
+                      .greyscale();
 
         // create an array of empty string for each row of pixels that
         // will be converted into characters.
