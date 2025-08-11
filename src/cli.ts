@@ -119,6 +119,11 @@ const thresholdOpt = createOption(
     .argParser(parseThresholdOpt)
     .default(0.75);
 
+const dimensionsOpt = createOption(
+    "-d, --dimensions <WxH>",
+    "width and height of the output image (default: size of input image)",
+).argParser(parseDimensionsOpt);
+
 /**
  * The frame rate to set the preview to render at. This should be a
  * number between 1 and 100 (inclusive). This option only does something
@@ -193,6 +198,7 @@ const program = new Command()
     .addOption(pixelOpt)
     .addOption(thresholdOpt)
     .addOption(frameRateOpt)
+    .addOption(dimensionsOpt)
     .addOption(previewOpt)
     .addOption(forceOpt)
     .addOption(verboseOpt)
@@ -350,6 +356,43 @@ function parseThresholdOpt(threshold: string): number {
     }
 
     return parsedValue;
+}
+
+/**
+ * Parse the dimensions argument string and return an object containing
+ * the width and height values.
+ *
+ * @param dimensions - dimensions argument from [-d|--dimensions] cli option
+ * @throws
+ * {InvalidArgumentError} if the value is not a number or improperly formatted
+ * @returns an object containing the width and height values
+ */
+function parseDimensionsOpt(dimensions: string): {
+    width: number;
+    height: number;
+} {
+    const input = dimensions.split("x");
+
+    if (input.length > 2 || input.length < 2) {
+        throw new InvalidArgumentError(
+            "Size must be in format <width>x<height>",
+        );
+    }
+
+    input.forEach((num) => {
+        const cur = Number(num);
+
+        if (Number.isNaN(cur) || !Number.isInteger(cur) || cur <= 0) {
+            throw new InvalidArgumentError(
+                "Dimensions must be positive integers",
+            );
+        }
+    });
+
+    return {
+        width: Number(input[0]),
+        height: Number(input[1]),
+    };
 }
 
 /**

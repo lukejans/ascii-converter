@@ -91,16 +91,19 @@ initializeFrames();
 for (let i = 0; i < global.state.frames.length; i++) {
     const buffer = fs.readFileSync(global.state.frames[i]);
 
+    const imgMods = options.dimensions
+        ? {
+              ...options.dimensions,
+              threshold: options.threshold,
+          }
+        : {
+              width: 0,
+              height: 0,
+              threshold: options.threshold,
+          };
+
     // create a text representation of the image
-    const asciiImg = new AsciiImg(
-        buffer,
-        {
-            width: 80,
-            height: 40,
-            threshold: 0.8,
-        },
-        options.pixels,
-    );
+    const asciiImg = new AsciiImg(buffer, imgMods, options.pixels);
     await asciiImg.edgeToAscii();
     await asciiImg.lumaToAscii();
 
