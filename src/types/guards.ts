@@ -1,6 +1,6 @@
 import type { ExecException } from "node:child_process";
 
-export function isExecException(err: unknown): err is ExecException {
+function isExecException(err: unknown): err is ExecException {
     return (
         err instanceof Error &&
         ("cmd" in err ||
@@ -12,9 +12,11 @@ export function isExecException(err: unknown): err is ExecException {
     );
 }
 
-export function isErrnoException(err: unknown): err is NodeJS.ErrnoException {
+function isErrnoException(err: unknown): err is NodeJS.ErrnoException {
     return (
         err instanceof Error &&
         ("errno" in err || "code" in err || "path" in err || "syscall" in err)
     );
 }
+
+export { isErrnoException, isExecException };

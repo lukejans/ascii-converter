@@ -1,27 +1,46 @@
-import "./globals.ts"; // change this
-//
-import "./cli/cli.ts";
-
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import process from "node:process";
+import AsciiImg from "./converter.ts";
 
-import { previewAsciiAction } from "./cli/actions.ts";
-import { options } from "./cli/cli.ts";
-import { runConverter } from "./converter/runner.ts";
+import { initializeFrames, options, showAsciiPreview } from "./cli.ts";
 
-// === exit cleanup ===
+/* Setup Global State */
+
+global.state = {
+    /**
+     * Temporary directory for storing the frames that are
+     * produced by ffmpeg splitting a video. This always uses
+     * the operating system's recommended temporary directory.
+     */
+    tmpDir: fs.mkdtempSync(path.join(os.tmpdir(), "frames_")),
+    /**
+     * Paths to image(s) that will be processed.
+     */
+    frames: [],
+    /**
+     * Ascii result from the ascii converter. This can either be
+     * a single frame if only a photo was processed or multiple
+     * frames if the input was a video.
+     */
+    asciiResult: [],
+    /**
+     * The current state of the application. This will be live until
+     * something causes the application to exit.
+     */
+    live: true,
+};
+
+/* Setup Exit Cleanup */
 
 /**
- * @internal
- * gracefully exit the program / node process when event occurs
- * which will cause the program to exit. This callback function
- * will be attached to different process events that would exit
- * the program such as; user termination, program completion, or
- * an error.
+ * callback function to cleanup any resources created during runtime
+ * before the program exits.
  *
  * @param code - value from the process.exit emitted event
  */
-const gracefulExit = (() => {
+const cleanup = (() => {
     let clean = false;
 
     return function (code: NodeJS.Signals | Error | string | number) {
@@ -55,19 +74,47 @@ const gracefulExit = (() => {
 })();
 
 process
-    .on("exit", gracefulExit) // before exiting
-    .on("SIGINT", gracefulExit) // ctrl+C
-    .on("SIGTERM", gracefulExit) // kill <pid>
-    .on("SIGHUP", gracefulExit) // window close or parent death
-    .on("SIGBREAK", gracefulExit) // winOS ctrl+Break
-    .on("uncaughtException", gracefulExit) // uncaught exception
-    .on("unhandledRejection", gracefulExit); // unhandled rejection
+    .on("exit", cleanup) // before exiting
+    .on("SIGINT", cleanup) // ctrl+C
+    .on("SIGTERM", cleanup) // kill <pid>
+    .on("SIGHUP", cleanup) // window close or parent death
+    .on("SIGBREAK", cleanup) // winOS ctrl+Break
+    .on("uncaughtException", cleanup) // uncaught exception
+    .on("unhandledRejection", cleanup); // unhandled rejection
 
-// === ascii conversion ===
+/* # Initialize CLI state */
 
-await runConverter();
+initializeFrames();
 
-// === run preview ===
+/* # Convert to ASCII */
+
+for (let i = 0; i < global.state.frames.length; i++) {
+    const buffer = fs.readFileSync(global.state.frames[i]);
+
+    // create a text representation of the image
+    const asciiImg = new AsciiImg(
+        buffer,
+        {
+            width: 80,
+            height: 40,
+            threshold: 0.8,
+        },
+        options.pixels,
+    );
+    await asciiImg.edgeToAscii();
+    await asciiImg.lumaToAscii();
+
+    // create an array to store each frame
+    global.state.asciiResult[i] = asciiImg.text;
+}
+
+// all files have been processed so write to an output file
+fs.writeFileSync(options.output, JSON.stringify(global.state.asciiResult));
+console.log(
+    `File written successfully to ${path.relative(".", options.output)}`,
+);
+
+/* # Preview Result */
 
 if (options.preview) {
     let asciiFrames;
@@ -79,5 +126,5 @@ if (options.preview) {
         } else throw error;
     }
 
-    previewAsciiAction(asciiFrames);
+    showAsciiPreview(asciiFrames);
 }
