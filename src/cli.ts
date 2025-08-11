@@ -175,9 +175,9 @@ const forceOpt = createOption(
  * $ ascii -i ./input.mp4 -d [options]
  * ```
  */
-const debugOpt = createOption(
-    "-d, --debug",
-    "enable debug mode to see extra logging",
+const verboseOpt = createOption(
+    "-v, --verbose",
+    "enable extra logging",
 ).default(false);
 
 /* # CLI Parse & Program Setup */
@@ -195,7 +195,7 @@ const program = new Command()
     .addOption(frameRateOpt)
     .addOption(previewOpt)
     .addOption(forceOpt)
-    .addOption(debugOpt)
+    .addOption(verboseOpt)
     .parse();
 
 const options = program.opts();
