@@ -334,14 +334,14 @@ function parseInputOpt(inputPath: string): string {
  * Parse the threshold argument sting and return a number within
  * the allowed range.
  *
- * @param inputThreshold - threshold argument from [-t|--threshold] cli option
+ * @param threshold - threshold argument from [-t|--threshold] cli option
  * @throws
  * {InvalidArgumentError} if the value is not a number or is outside of the range
  * [0.0, 1.0]
  * @returns a number between 0 and 1
  */
-function parseThresholdOpt(inputThreshold: string): number {
-    const parsedValue = Number.parseFloat(inputThreshold);
+function parseThresholdOpt(threshold: string): number {
+    const parsedValue = Number.parseFloat(threshold);
 
     if (Number.isNaN(parsedValue)) {
         throw new InvalidArgumentError("Threshold must be a number");
