@@ -31,27 +31,28 @@ export default class AsciiImg {
         // these preprocessing steps help ensure the image is ready to
         // go through all processing steps by removing alpha channels,
         // converting to a luminance only image, then normalizing.
-        this.pipeline =
-            imgMods.width <= 0 || imgMods.height <= 0
-                ? sharp(img)
-                : sharp(img)
-                      .resize({
-                          width: this.mods.width,
-                          height: this.mods.height,
-                          fit: "fill",
-                      })
-                      /**
-                       * BUG: when processing images with flatten and normalise the
-                       *      image have quite a mangled output such as not rendering
-                       *      much of the edges as well as rendering too much in other
-                       *      areas... Do more research into the effects of these
-                       *      operations and how other operations can be used to improve
-                       *      the output.
-                       */
-                      // .flatten()
-                      // .grayscale()
-                      // .normalise()
-                      .greyscale();
+        this.pipeline = sharp(img)
+            /**
+             * BUG: when processing images with flatten and normalise the
+             *      image have quite a mangled output such as not rendering
+             *      much of the edges as well as rendering too much in other
+             *      areas... Do more research into the effects of these
+             *      operations and how other operations can be used to improve
+             *      the output.
+             */
+            // .flatten()
+            // .grayscale()
+            // .normalise()
+            .greyscale();
+
+        // only resize if a width or height is provided
+        if (imgMods.width || imgMods.height) {
+            this.pipeline.resize({
+                width: this.mods.width,
+                height: this.mods.height,
+                fit: "fill",
+            });
+        }
 
         // create an array of empty string for each row of pixels that
         // will be converted into characters.
@@ -81,6 +82,12 @@ export default class AsciiImg {
      * @link https://en.wikipedia.org/wiki/Sobel_operator
      */
     async edgeToAscii() {
+        const metadata = await this.pipeline.metadata();
+
+        this.mods.width = metadata.width;
+        this.mods.height = metadata.height;
+        this.#text = Array(this.mods.height).fill("");
+
         // apply the sobel operators to the image via convolution
         // and return the result in raw format with the depth of
         // short to preserve signed values outside the range 0-255.
@@ -190,6 +197,12 @@ export default class AsciiImg {
      * @link https://en.wikipedia.org/wiki/Relative_luminance
      */
     async lumaToAscii() {
+        const metadata = await this.pipeline.metadata();
+
+        this.mods.width = metadata.width;
+        this.mods.height = metadata.height;
+        this.#text = Array(this.mods.height).fill("");
+
         const buffer = await this.pipeline.clone().raw().toBuffer();
 
         for (let row = 0; row < this.mods.height; row++) {

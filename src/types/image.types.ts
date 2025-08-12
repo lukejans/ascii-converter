@@ -7,9 +7,9 @@
  */
 export interface ImgModifications {
     /** Width to resize the image to */
-    width: number;
+    width?: number;
     /** Height to resize the image to */
-    height: number;
+    height?: number;
     /** threshold for pixel rendering [0, 1] */
     threshold: number;
 }
