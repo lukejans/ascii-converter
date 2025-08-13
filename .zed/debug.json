@@ -12,22 +12,22 @@
         "args": ["-i", "assets/joystick.mp4"],
         "skipFiles": ["<node_internals>/**"],
         "build": {
-            "command": "pnpm exec",
-            "args": ["tsc"]
+            "command": "pnpm",
+            "args": ["run", "build"]
         },
         "outFiles": ["${ZED_WORKTREE_ROOT}/**/*.js"]
     },
     {
-        "label": "Launch CLI (args: P)",
+        "label": "Launch CLI (args: preview, dimensions)",
         "adapter": "JavaScript",
         "type": "node",
         "request": "launch",
         "program": "./dist/main.js",
-        "args": ["-i", "assets/joystick.mp4", "-P"],
+        "args": ["-i", "assets/joystick.mp4", "-P", "-d 80x40"],
         "skipFiles": ["<node_internals>/**"],
         "build": {
-            "command": "pnpm exec",
-            "args": ["tsc"]
+            "command": "pnpm",
+            "args": ["run", "build"]
         },
         "outFiles": ["${ZED_WORKTREE_ROOT}/**/*.js"]
     }
