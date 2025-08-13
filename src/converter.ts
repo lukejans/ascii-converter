@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 import type { ImgModifications } from "./types/image.types.ts";
 import { mapValue } from "./utils.ts";
 
@@ -24,39 +24,43 @@ export default class AsciiImg {
 
     #pixels: string;
 
-    constructor(img: Buffer, imgMods: ImgModifications, pixels: string) {
-        this.mods = imgMods;
+    constructor(img: Sharp, mods: ImgModifications, pixels: string) {
+        this.pipeline = img;
+        this.mods = mods;
         this.#pixels = pixels;
+        this.#text = Array(this.mods.height).fill("");
+    }
 
-        // these preprocessing steps help ensure the image is ready to
-        // go through all processing steps by removing alpha channels,
-        // converting to a luminance only image, then normalizing.
-        this.pipeline = sharp(img)
+    static async create(img: Buffer, mods: ImgModifications, pixels: string) {
+        /**
+         * these preprocessing steps help ensure the image is ready to
+         * go through all processing steps by removing alpha channels,
+         * converting to a luminance only image, then normalizing.
+         */
+        const pipeline = sharp(img)
             /**
-             * BUG: when processing images with flatten and normalise the
-             *      image have quite a mangled output such as not rendering
-             *      much of the edges as well as rendering too much in other
-             *      areas... Do more research into the effects of these
-             *      operations and how other operations can be used to improve
-             *      the output.
+             * BUG: when processing images with flatten and normalise the image
+             *      have quite a mangled output such as not rendering much of the
+             *      edges as well as rendering too much in other areas... Do more
+             *      research into the effects of these operations and how other
+             *      operations can be used to improve the output.
              */
             // .flatten()
             // .grayscale()
             // .normalise()
             .greyscale();
 
-        // only resize if a width or height is provided
-        if (imgMods.width || imgMods.height) {
-            this.pipeline.resize({
-                width: this.mods.width,
-                height: this.mods.height,
-                fit: "fill",
-            });
-        }
+        const _metadata = await pipeline.metadata();
+        mods.height = mods.height ? mods.height : _metadata.height;
+        mods.width = mods.width ? mods.width : _metadata.width;
 
-        // create an array of empty string for each row of pixels that
-        // will be converted into characters.
-        this.#text = Array(this.mods.height).fill("");
+        pipeline.resize({
+            width: mods.width,
+            height: mods.height,
+            fit: "fill",
+        });
+
+        return new AsciiImg(pipeline, mods, pixels);
     }
 
     /**
@@ -82,12 +86,6 @@ export default class AsciiImg {
      * @link https://en.wikipedia.org/wiki/Sobel_operator
      */
     async edgeToAscii() {
-        const metadata = await this.pipeline.metadata();
-
-        this.mods.width = metadata.width;
-        this.mods.height = metadata.height;
-        this.#text = Array(this.mods.height).fill("");
-
         // apply the sobel operators to the image via convolution
         // and return the result in raw format with the depth of
         // short to preserve signed values outside the range 0-255.
@@ -197,12 +195,6 @@ export default class AsciiImg {
      * @link https://en.wikipedia.org/wiki/Relative_luminance
      */
     async lumaToAscii() {
-        const metadata = await this.pipeline.metadata();
-
-        this.mods.width = metadata.width;
-        this.mods.height = metadata.height;
-        this.#text = Array(this.mods.height).fill("");
-
         const buffer = await this.pipeline.clone().raw().toBuffer();
 
         for (let row = 0; row < this.mods.height; row++) {

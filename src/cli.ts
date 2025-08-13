@@ -384,7 +384,7 @@ function parseDimensionsOpt(dimensions: string): {
 
         if (Number.isNaN(cur) || !Number.isInteger(cur) || cur <= 0) {
             throw new InvalidArgumentError(
-                "Dimensions must be positive integers",
+                "Please provide positive integers for the dimensions",
             );
         }
     });
