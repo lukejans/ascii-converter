@@ -96,10 +96,14 @@ for (let i = 0; i < global.state.frames.length; i++) {
               ...options.dimensions,
               threshold: options.threshold,
           }
-        : { threshold: options.threshold };
+        : {
+              width: -1,
+              height: -1,
+              threshold: options.threshold,
+          };
 
     // create a text representation of the image
-    const asciiImg = new AsciiImg(buffer, imgMods, options.pixels);
+    const asciiImg = await AsciiImg.create(buffer, imgMods, options.pixels);
     await asciiImg.edgeToAscii();
     await asciiImg.lumaToAscii();
 
