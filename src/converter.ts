@@ -1,4 +1,5 @@
 import sharp, { type Sharp } from "sharp";
+import { options } from "./cli.ts";
 import type { ImgModifications } from "./types/image.types.ts";
 import { mapValue } from "./utils.ts";
 
@@ -184,7 +185,7 @@ export default class AsciiImg {
                     // determine what character to use based on the angle
                     this.stitchText(row, col, this.edgeToChar(edgeAngleDeg));
                 } else {
-                    this.stitchText(row, col, " ");
+                    this.stitchText(row, col, options.spaceChar);
                 }
             }
         }
@@ -273,7 +274,9 @@ export default class AsciiImg {
             mapValue(luminance, 0, 255, 0, this.#pixels.length - 1),
         );
 
-        return this.#pixels[index];
+        return this.#pixels[index] === " "
+            ? options.spaceChar
+            : this.#pixels[index];
     }
 
     private edgeToChar(angle: number) {
