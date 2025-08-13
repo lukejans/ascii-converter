@@ -250,7 +250,7 @@ export default class AsciiImg {
     stitchText(pixelRow: number, pixelCol: number, char: string) {
         const target = this.#text[pixelRow][pixelCol];
 
-        if (target === " ") {
+        if (target === options.spaceChar) {
             // a space character was found so stitch the character
             this.#text[pixelRow] =
                 this.#text[pixelRow].slice(0, pixelCol) +
