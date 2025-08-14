@@ -213,7 +213,7 @@ function initializeFrames() {
 
 /* # Actions */
 
-async function showAsciiPreview(asciiFrames: string[][]) {
+async function showAsciiPreview(asciiFrames: string[][][]) {
     const FRAME_DURATION = 1000 / Number(options.frameRate);
 
     // enable alternate buffer to preserve the users history
@@ -519,12 +519,14 @@ function runCmd(cmd: string, opts: string): string | never {
  *
  * @param frame - the ascii frame/image to display
  */
-function displayFrame(frame: string[]) {
+function displayFrame(frame: string[][]) {
     // clear stdout before displaying
     process.stdout.write("\x1B[H\x1B[2J");
 
+    const rows = frame.map((row) => row.join(""));
+
     // display the line to stdout
-    process.stdout.write(frame.join("\n"));
+    process.stdout.write(rows.join("\n"));
 }
 
 export { initializeFrames, options, showAsciiPreview };
