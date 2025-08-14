@@ -12,8 +12,8 @@
         "args": ["-i", "assets/joystick.mp4"],
         "skipFiles": ["<node_internals>/**"],
         "build": {
-            "command": "pnpm",
-            "args": ["run", "build"]
+            "command": "pnpm exec",
+            "args": ["tsc"]
         },
         "outFiles": ["${ZED_WORKTREE_ROOT}/**/*.js"]
     },
@@ -26,8 +26,8 @@
         "args": ["-i", "assets/joystick.mp4", "-P", "-d 80x40"],
         "skipFiles": ["<node_internals>/**"],
         "build": {
-            "command": "pnpm",
-            "args": ["run", "build"]
+            "command": "pnpm exec",
+            "args": ["tsc"]
         },
         "outFiles": ["${ZED_WORKTREE_ROOT}/**/*.js"]
     }
