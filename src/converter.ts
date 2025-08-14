@@ -19,9 +19,21 @@ export default class AsciiImg {
     mods: ImgModifications;
 
     /**
-     * The result of converting the image to ascii.
+     * The result of converting the image to ascii. This array is structured
+     * as an array or rows so you would iterate over the rows and each index
+     * in a row is a string representing a value in a column.
+     *
+     * @example
+     * ```
+     * [
+     *  ['', '', ''],
+     *  ['', '', ''],
+     *  ['', '', ''],
+     *  ['', '', ''],
+     * ]
+     * ```
      */
-    #text: string[];
+    #text: string[][];
 
     #pixels: string;
 
@@ -29,7 +41,9 @@ export default class AsciiImg {
         this.pipeline = img;
         this.mods = mods;
         this.#pixels = pixels;
-        this.#text = Array(this.mods.height).fill("");
+        this.#text = Array(mods.height)
+            .fill(null)
+            .map(() => Array(mods.width));
     }
 
     static async create(img: Buffer, mods: ImgModifications, pixels: string) {
@@ -183,9 +197,9 @@ export default class AsciiImg {
                     if (edgeAngleDeg < 0) edgeAngleDeg += 180;
 
                     // determine what character to use based on the angle
-                    this.stitchText(row, col, this.edgeToChar(edgeAngleDeg));
+                    this.#stitchText(row, col, this.#edgeToChar(edgeAngleDeg));
                 } else {
-                    this.stitchText(row, col, options.spaceChar);
+                    this.#stitchText(row, col, options.spaceChar);
                 }
             }
         }
@@ -204,7 +218,7 @@ export default class AsciiImg {
                 const pixel = row * this.mods.width + col;
 
                 // add a character (pixel) to the row
-                this.stitchText(row, col, this.lumaToChar(buffer[pixel]));
+                this.#stitchText(row, col, this.#lumaToChar(buffer[pixel]));
             }
         }
         return this;
@@ -247,23 +261,17 @@ export default class AsciiImg {
      * @param pixelCol - the location in the row
      * @param char - the character to place at the pixel location
      */
-    stitchText(pixelRow: number, pixelCol: number, char: string) {
+    #stitchText(pixelRow: number, pixelCol: number, char: string) {
         const target = this.#text[pixelRow][pixelCol];
 
-        if (target === options.spaceChar) {
-            // a space character was found so stitch the character
-            this.#text[pixelRow] =
-                this.#text[pixelRow].slice(0, pixelCol) +
-                char +
-                this.#text[pixelRow].slice(pixelCol + 1);
-        } else if (target === undefined) {
-            // there was no text created yet so we can simply add
-            // the character to a row.
-            this.#text[pixelRow] += char;
+        if (target === options.spaceChar || target === undefined) {
+            // a space character is located at the target or no text
+            // is currently at the location so update to the new char.
+            this.#text[pixelRow][pixelCol] = char;
         }
     }
 
-    private lumaToChar(luminance: number) {
+    #lumaToChar(luminance: number) {
         // the characters being used to represent the luma in an image
         // which is a practical measurement of a pixels brightness. This
         // charset is listed from darkest to brightest which is currently
@@ -279,7 +287,7 @@ export default class AsciiImg {
             : this.#pixels[index];
     }
 
-    private edgeToChar(angle: number) {
+    #edgeToChar(angle: number) {
         let edgeChar: string = "";
 
         if ((angle >= 0 && angle <= 19) || (angle <= 180 && angle >= 161)) {
@@ -305,7 +313,7 @@ export default class AsciiImg {
         return edgeChar;
     }
 
-    get text(): string[] {
+    get text() {
         return this.#text;
     }
 }

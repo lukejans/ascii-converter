@@ -4,7 +4,7 @@ declare global {
     var state: {
         tmpDir: string;
         frames: string[];
-        asciiResult: string[][];
+        asciiResult: string[][][];
         live: boolean;
     };
     var options: CommandOptions;
