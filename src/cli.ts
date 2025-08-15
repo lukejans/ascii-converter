@@ -222,7 +222,10 @@ async function showAsciiPreview(asciiFrames: string[][][]) {
     process.stdout.write("\x1b[?25l");
 
     if (asciiFrames.length === 1) {
+        // don't run in an alternate buffer for a single frame
+        process.stdout.write("\x1B[?1049l");
         displayFrame(asciiFrames[0]);
+        process.stdout.write("\n");
     } else {
         // infinite video loop
         let i = 0;
