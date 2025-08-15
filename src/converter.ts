@@ -65,9 +65,11 @@ export default class AsciiImg {
             // .normalise()
             .greyscale();
 
-        const _metadata = await pipeline.metadata();
-        mods.height = mods.height ? mods.height : _metadata.height;
-        mods.width = mods.width ? mods.width : _metadata.width;
+        if (!mods.width || !mods.height) {
+            const _metadata = await pipeline.metadata();
+            mods.height = _metadata.height;
+            mods.width = _metadata.width;
+        }
 
         pipeline.resize({
             width: mods.width,
