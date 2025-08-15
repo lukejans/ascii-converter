@@ -9,7 +9,7 @@
         "type": "node",
         "request": "launch",
         "program": "./dist/main.js",
-        "args": ["-i", "assets/joystick.mp4"],
+        "args": ["-i", "assets/joystick.mp4", "-o", "./dist/output.json"],
         "skipFiles": ["<node_internals>/**"],
         "build": {
             "command": "pnpm exec",
@@ -23,7 +23,15 @@
         "type": "node",
         "request": "launch",
         "program": "./dist/main.js",
-        "args": ["-i", "assets/joystick.mp4", "-P", "-d 80x40"],
+        "args": [
+            "-i",
+            "assets/joystick.mp4",
+            "-P",
+            "-d",
+            "80x40",
+            "-o",
+            "./dist/output.json"
+        ],
         "skipFiles": ["<node_internals>/**"],
         "build": {
             "command": "pnpm exec",
