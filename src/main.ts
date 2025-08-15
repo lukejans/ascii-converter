@@ -97,8 +97,8 @@ for (let i = 0; i < global.state.frames.length; i++) {
               threshold: options.threshold,
           }
         : {
-              width: -1,
-              height: -1,
+              width: 0,
+              height: 0,
               threshold: options.threshold,
           };
 
