@@ -97,8 +97,8 @@ for (let i = 0; i < global.state.frames.length; i++) {
               threshold: options.threshold,
           }
         : {
-              width: 0,
-              height: 0,
+              width: 0, //   the width and height here will be
+              height: 0, //  overwritten by the image dimensions
               threshold: options.threshold,
           };
 
