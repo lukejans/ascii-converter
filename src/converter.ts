@@ -53,16 +53,7 @@ export default class AsciiImg {
          * converting to a luminance only image, then normalizing.
          */
         const pipeline = sharp(img)
-            /**
-             * BUG: when processing images with flatten and normalise the image
-             *      have quite a mangled output such as not rendering much of the
-             *      edges as well as rendering too much in other areas... Do more
-             *      research into the effects of these operations and how other
-             *      operations can be used to improve the output.
-             */
-            // .flatten()
-            // .grayscale()
-            // .normalise()
+            .flatten({ background: options.backgroundColor })
             .greyscale();
 
         if (!mods.width || !mods.height) {

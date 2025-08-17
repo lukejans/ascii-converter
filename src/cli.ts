@@ -124,6 +124,11 @@ const dimensionsOpt = createOption(
     "width and height of the output image (default: size of input image)",
 ).argParser(parseDimensionsOpt);
 
+const backgroundColorOpt = createOption(
+    "-b, --background-color <color>",
+    "background used when merging the alpha channel (parsed by color module)",
+).default("white");
+
 /**
  * The frame rate to set the preview to render at. This should be a
  * number between 1 and 100 (inclusive). This option only does something
@@ -199,6 +204,7 @@ const program = new Command()
     .addOption(thresholdOpt)
     .addOption(frameRateOpt)
     .addOption(dimensionsOpt)
+    .addOption(backgroundColorOpt)
     .addOption(previewOpt)
     .addOption(forceOpt)
     .addOption(verboseOpt)
