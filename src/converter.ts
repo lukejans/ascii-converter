@@ -154,7 +154,7 @@ export default class AsciiImg {
         }
 
         // calculate the threshold based on the max magnitude
-        const threshold = data.magnitude.max * this.mods.threshold;
+        const threshold = data.magnitude.max * this.mods.threshold.edge;
 
         // build the ASCII image
         for (let row = 0; row < this.mods.height; row++) {
@@ -203,15 +203,22 @@ export default class AsciiImg {
      * @link https://en.wikipedia.org/wiki/Relative_luminance
      */
     async lumaToAscii() {
-        const buffer = await this.pipeline.clone().raw().toBuffer();
+        const buffer = new DataView(
+            (await this.pipeline.clone().normalise().raw().toBuffer()).buffer,
+        );
 
         for (let row = 0; row < this.mods.height; row++) {
             for (let col = 0; col < this.mods.width; col++) {
                 // get each pixel in order from left to right, top to bottom
-                const pixel = row * this.mods.width + col;
+                const pixelIndex = row * this.mods.width + col;
+                const pixelVal = buffer.getUint8(pixelIndex);
 
-                // add a character (pixel) to the row
-                this.#stitchText(row, col, this.#lumaToChar(buffer[pixel]));
+                // add a character (pixel) to the ascii result
+                if (pixelVal < 255 * this.mods.threshold.luma) {
+                    this.#stitchText(row, col, this.#lumaToChar(pixelVal));
+                } else {
+                    this.#stitchText(row, col, options.spaceChar);
+                }
             }
         }
         return this;

@@ -94,12 +94,18 @@ for (let i = 0; i < global.state.frames.length; i++) {
     const imgMods = options.dimensions
         ? {
               ...options.dimensions,
-              threshold: options.threshold,
+              threshold: {
+                  luma: options.lumaThreshold,
+                  edge: options.edgeThreshold,
+              },
           }
         : {
               width: 0, //   the width and height here will be
               height: 0, //  overwritten by the image dimensions
-              threshold: options.threshold,
+              threshold: {
+                  luma: options.lumaThreshold,
+                  edge: options.edgeThreshold,
+              },
           };
 
     // create a text representation of the image
