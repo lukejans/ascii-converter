@@ -11,5 +11,8 @@ export interface ImgModifications {
     /** Height to resize the image to */
     height: number;
     /** threshold for pixel rendering [0, 1] */
-    threshold: number;
+    threshold: {
+        luma: number;
+        edge: number;
+    };
 }

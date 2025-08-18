@@ -112,12 +112,19 @@ const pixelOpt = createOption(
  * $ ascii -i ./input.mp4 -t 0.75 [options]
  * ```
  */
-const thresholdOpt = createOption(
-    "-t, --threshold <float>",
-    "luminance threshold to which a char should be rendered [0, 1]",
+const edgeThresholdOpt = createOption(
+    "-e, --edge-threshold <float>",
+    "luminance threshold to which an edge char should be rendered [0, 1]",
 )
     .argParser(parseThresholdOpt)
-    .default(0.75);
+    .default(0.7);
+
+const lumaThresholdOpt = createOption(
+    "-l, --luma-threshold <float>",
+    "luminance threshold to which a luminance char should be rendered [0, 1]",
+)
+    .argParser(parseThresholdOpt)
+    .default(0.95);
 
 const dimensionsOpt = createOption(
     "-d, --dimensions <WxH>",
@@ -201,7 +208,8 @@ const program = new Command()
     .addOption(outputOpt)
     .addOption(spaceCharOpt)
     .addOption(pixelOpt)
-    .addOption(thresholdOpt)
+    .addOption(edgeThresholdOpt)
+    .addOption(lumaThresholdOpt)
     .addOption(frameRateOpt)
     .addOption(dimensionsOpt)
     .addOption(backgroundColorOpt)
