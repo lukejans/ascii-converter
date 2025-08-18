@@ -242,7 +242,7 @@ async function showAsciiPreview(asciiFrames: string[][][]) {
             const start = hrtime.bigint();
 
             // display each frame
-            displayFrame(asciiFrames[i]);
+            _displayFrame(asciiFrames[i]);
 
             // calculate delay between frames
             const end = hrtime.bigint();
@@ -265,7 +265,7 @@ function createFrames() {
     const inputExt = path.extname(options.input).replace(".", "").toLowerCase();
     if (extensions.validate(inputExt) === "video") {
         // check the duration of the video and the frame rate
-        const frameCount = runCmd(
+        const frameCount = _runCmd(
             "ffprobe",
             `-v error \
             -count_frames \
@@ -278,7 +278,7 @@ function createFrames() {
         const frameDigitLen = Math.ceil(Math.log10(Number(frameCount)));
 
         // split the video into frames
-        runCmd(
+        _runCmd(
             "ffmpeg",
             `-loglevel quiet \
             -i ${options.input} \
@@ -485,14 +485,13 @@ function validateOutputOpt(outputPath: string, force: boolean) {
 /* # Helpers */
 
 /**
- * @internal
  * Run a command in a users shell. This should work on all
  * platforms as long as only resolved paths are being used as
  * arguments to options.
  *
  * @example
  * ```ts
- * runCmd("mkdir", "-p ./new/dir")
+ * _runCmd("mkdir", "-p ./new/dir")
  * ```
  * @param cmd - an executable command in a users PATH
  * @param opts - all options and arguments for the command
@@ -500,7 +499,7 @@ function validateOutputOpt(outputPath: string, force: boolean) {
  * {CommanderError} if the error from running the command is
  * not an ExecException then some unknown behavior occurred.
  */
-function runCmd(cmd: string, opts: string): string | never {
+function _runCmd(cmd: string, opts: string): string | never {
     try {
         return execSync(`${cmd} ${opts}`, { encoding: "utf8" });
     } catch (err) {
@@ -523,14 +522,13 @@ function runCmd(cmd: string, opts: string): string | never {
 }
 
 /**
- * @internal
  * display a single ascii frame / image. This will clear the
  * screen and write the frame to stdout using ANSI escape codes.
  *
  * @param frame - the ascii frame/image to display
  */
-function displayFrame(frame: string[][]) {
-    // clear stdout before displaying
+function _displayFrame(frame: string[][]) {
+    // clear the previous frame
     process.stdout.write("\x1B[H\x1B[2J");
 
     const rows = frame.map((row) => row.join(""));
