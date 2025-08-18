@@ -222,17 +222,18 @@ function initializeFrames() {
 async function showAsciiPreview(asciiFrames: string[][][]) {
     const FRAME_DURATION = 1000 / Number(options.frameRate);
 
-    // enable alternate buffer to preserve the users history
-    process.stdout.write("\x1B[?1049h");
     // hide the cursor
     process.stdout.write("\x1b[?25l");
 
     if (asciiFrames.length === 1) {
-        // don't run in an alternate buffer for a single frame
-        process.stdout.write("\x1B[?1049l");
-        displayFrame(asciiFrames[0]);
-        process.stdout.write("\n");
+        // display the line to stdout
+        process.stdout.write(
+            asciiFrames[0].map((row) => row.join("")).join("\n") + "\n",
+        );
     } else {
+        // enable alternate buffer to preserve the users history
+        process.stdout.write("\x1B[?1049h");
+
         // infinite video loop
         let i = 0;
         while (global.state.live) {
