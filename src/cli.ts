@@ -1,5 +1,7 @@
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { hrtime } from "node:process";
 
 import {
     Command,
@@ -8,12 +10,10 @@ import {
     InvalidArgumentError,
 } from "commander";
 import { nanoid } from "nanoid";
-import { execSync } from "node:child_process";
-import { hrtime } from "node:process";
+
 import { isErrnoException, isExecException } from "./types/guards.ts";
 
-/* Supported Extensions */
-
+// #region Supported Extensions
 const extensions = {
     photo: new Set(["png", "jpg", "jpeg", "avif"]),
     video: new Set(["mp4", "mov"]),
@@ -31,9 +31,9 @@ const extensions = {
         return false;
     },
 };
+// #endregion
 
-/* # CLI Options */
-
+// #region CLI Options
 /**
  * The path to an image or video that is in a compatible format. The
  * currently supported formats are as follows:
@@ -196,9 +196,9 @@ const verboseOpt = createOption(
     "-v, --verbose",
     "enable extra logging",
 ).default(false);
+// #endregion
 
-/* # CLI Parse & Program Setup */
-
+// #region CLI Parse & Program Setup
 const program = new Command()
     .name("ascii")
     .usage("--input <path> [options]")
@@ -224,9 +224,9 @@ function initializeFrames() {
     validateOutputOpt(options.output, options.force);
     createFrames();
 }
+// #endregion
 
-/* # Actions */
-
+// #region Actions
 async function showAsciiPreview(asciiFrames: string[][][]) {
     const FRAME_DURATION = 1000 / Number(options.frameRate);
 
@@ -306,9 +306,9 @@ function createFrames() {
         global.state.frames = [options.input];
     }
 }
+// #endregion
 
-/* # Option Parsers */
-
+// #region Option Parsers
 /**
  * Parse the input path and check if the file exists, is a file,
  * and has an extension that is compatible with the program.
@@ -450,9 +450,9 @@ function parseFrameRateOpt(frameRate: string): number {
 function parseOutputOpt(outputPath: string): string {
     return path.resolve(outputPath);
 }
+// #endregion
 
-/* # Validators */
-
+// #region Validators
 function validateOutputOpt(outputPath: string, force: boolean) {
     // if the output file already exists get it's information
     const outputFileStats = fs.existsSync(outputPath)
@@ -489,9 +489,9 @@ function validateOutputOpt(outputPath: string, force: boolean) {
         }
     }
 }
+// #endregion
 
-/* # Helpers */
-
+// #region Helpers
 /**
  * Run a command in a users shell. This should work on all
  * platforms as long as only resolved paths are being used as
@@ -544,5 +544,8 @@ function _displayFrame(frame: string[][]) {
     // display the line to stdout
     process.stdout.write(rows.join("\n"));
 }
+// #endregion
 
+// #region Exports
 export { initializeFrames, options, showAsciiPreview };
+// #endregion

@@ -2,12 +2,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
-import AsciiImg from "./converter.ts";
 
 import { initializeFrames, options, showAsciiPreview } from "./cli.ts";
+import AsciiImg from "./converter.ts";
 
-/* Setup Global State */
-
+// #region Global State Setup
 global.state = {
     /**
      * Temporary directory for storing the frames that are
@@ -31,9 +30,9 @@ global.state = {
      */
     live: true,
 };
+// #endregion
 
-/* Setup Exit Cleanup */
-
+// #region Exit Cleanup Setup
 /**
  * callback function to cleanup any resources created during runtime
  * before the program exits.
@@ -81,12 +80,10 @@ process
     .on("SIGBREAK", cleanup) // winOS ctrl+Break
     .on("uncaughtException", cleanup) // uncaught exception
     .on("unhandledRejection", cleanup); // unhandled rejection
+// #endregion
 
-/* # Initialize CLI state */
-
+// #region Main
 initializeFrames();
-
-/* # Convert to ASCII */
 
 for (let i = 0; i < global.state.frames.length; i++) {
     const buffer = fs.readFileSync(global.state.frames[i]);
@@ -123,8 +120,7 @@ console.log(
     `File written successfully to ${path.relative(".", options.output)}`,
 );
 
-/* # Preview Result */
-
+// preview the result
 if (options.preview) {
     let asciiFrames;
     try {
@@ -137,3 +133,4 @@ if (options.preview) {
 
     showAsciiPreview(asciiFrames);
 }
+// #endregion

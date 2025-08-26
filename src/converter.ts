@@ -1,4 +1,5 @@
 import sharp, { type Sharp } from "sharp";
+
 import { options } from "./cli.ts";
 import type { ImgModifications } from "./types/image.types.ts";
 import { mapValue } from "./utils.ts";
