@@ -9,10 +9,7 @@ export default tseslint.config(
     tseslint.configs.strict,
     {
         languageOptions: {
-            globals: {
-                ...globals.node,
-                ...globals.jest,
-            },
+            globals: { ...globals.node },
         },
         rules: {
             // typescript will already handles this
